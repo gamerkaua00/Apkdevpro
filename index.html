@@ -15,15 +15,24 @@
     <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
     <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
-    
+
     <script src="cordova.js"></script>
 
     <style>
+        /* Core Styles & Scroll Logic */
         body { background-color: var(--bg-main, #020617); color: #f8fafc; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; overflow: hidden; -webkit-tap-highlight-color: transparent; transition: background-color 0.5s ease; }
         .h-safe { height: 100vh; height: 100dvh; display: flex; flex-direction: column; }
-        .content { flex: 1; overflow-y: auto; scroll-behavior: smooth; padding-bottom: 350px !important; } 
+        
+        .content { 
+            flex: 1; 
+            overflow-y: auto; 
+            scroll-behavior: smooth; 
+            padding-bottom: 350px !important; 
+        } 
+        
         .glass { background: var(--bg-glass, rgba(15, 23, 42, 0.95)); border-bottom: 1px solid rgba(255,255,255,0.08); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px); transition: background 0.5s ease; }
         
+        /* Custom Scrollbar */
         ::-webkit-scrollbar { width: 4px; } 
         ::-webkit-scrollbar-track { background: #0f172a; } 
         ::-webkit-scrollbar-thumb { background: #334155; border-radius: 4px; }
@@ -33,18 +42,18 @@
         .fade-in { animation: fadeIn 0.3s cubic-bezier(0.4, 0, 0.2, 1); } 
         @keyframes fadeIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
         
-        .splash-out { animation: fadeOut 0.5s forwards; }
-        @keyframes fadeOut { from { opacity: 1; } to { opacity: 0; visibility: hidden; } }
-
         .toast-enter { animation: slideIn 0.3s forwards; }
         @keyframes slideIn { from { transform: translateX(100%); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
 
         .font-lcd { font-family: 'Courier New', Courier, monospace; letter-spacing: 2px; }
+        
+        /* Micro-interactions */
         .marquee-container { overflow: hidden; white-space: nowrap; }
         .marquee-text { display: inline-block; padding-left: 100%; animation: marquee 15s linear infinite; }
         @keyframes marquee { 0% { transform: translateX(0); } 100% { transform: translateX(-100%); } }
 
-        #kmz-splash { position: fixed; inset: 0; background: #020617; z-index: 99999; display: flex; flex-direction: column; align-items: center; justify-content: center; }
+        /* KMZ Splash Screen */
+        #kmz-splash { position: fixed; inset: 0; background: #020617; z-index: 99999; display: flex; flex-direction: column; align-items: center; justify-content: center; transition: opacity 0.5s ease; }
         .kmz-logo-text { color: #3b82f6; font-size: 3rem; font-weight: 900; letter-spacing: 4px; animation: pulse 2s infinite; }
         .kmz-sub-text { color: #94a3b8; font-size: 0.8rem; letter-spacing: 6px; margin-top: 10px; }
         @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.6; } }
@@ -65,13 +74,50 @@
     <script type="text/babel">
         const { useState, useEffect, useRef, useMemo } = React;
 
+        // --- THEME DEFINITIONS ---
         const themeStyles = {
-            cyber: ` :root { --bg-main: #020617; --bg-glass: rgba(15, 23, 42, 0.95); } `,
-            forest: ` :root { --bg-main: #0c0a09; --bg-glass: rgba(12, 10, 9, 0.95); } .bg-slate-950 { background-color: #0c0a09 !important; } .bg-slate-900 { background-color: #1c1917 !important; } .bg-slate-800 { background-color: #292524 !important; } .border-slate-700 { border-color: #44403c !important; } .border-slate-800 { border-color: #292524 !important; } .text-blue-400 { color: #34d399 !important; } .text-emerald-400 { color: #10b981 !important; } .bg-blue-600 { background-color: #059669 !important; } .text-purple-400 { color: #84cc16 !important; } `,
-            sunset: ` :root { --bg-main: #18181b; --bg-glass: rgba(24, 24, 27, 0.95); } .bg-slate-950 { background-color: #09090b !important; } .bg-slate-900 { background-color: #18181b !important; } .bg-slate-800 { background-color: #27272a !important; } .border-slate-700 { border-color: #3f3f46 !important; } .border-slate-800 { border-color: #27272a !important; } .text-blue-400 { color: #f97316 !important; } .text-emerald-400 { color: #ef4444 !important; } .bg-blue-600 { background-color: #ea580c !important; } .text-purple-400 { color: #facc15 !important; } `,
-            dracula: ` :root { --bg-main: #0f0019; --bg-glass: rgba(15, 0, 25, 0.95); } .bg-slate-950 { background-color: #0f0019 !important; } .bg-slate-900 { background-color: #1a0029 !important; } .bg-slate-800 { background-color: #2e0242 !important; } .border-slate-700 { border-color: #4a0461 !important; } .border-slate-800 { border-color: #2e0242 !important; } .text-blue-400 { color: #d8b4fe !important; } .text-emerald-400 { color: #f472b6 !important; } .bg-blue-600 { background-color: #9333ea !important; } .text-purple-400 { color: #e879f9 !important; } `
+            cyber: `
+                :root { --bg-main: #020617; --bg-glass: rgba(15, 23, 42, 0.95); }
+            `,
+            forest: `
+                :root { --bg-main: #0c0a09; --bg-glass: rgba(12, 10, 9, 0.95); }
+                .bg-slate-950 { background-color: #0c0a09 !important; }
+                .bg-slate-900 { background-color: #1c1917 !important; }
+                .bg-slate-800 { background-color: #292524 !important; }
+                .border-slate-700 { border-color: #44403c !important; }
+                .border-slate-800 { border-color: #292524 !important; }
+                .text-blue-400 { color: #34d399 !important; }
+                .text-emerald-400 { color: #10b981 !important; }
+                .bg-blue-600 { background-color: #059669 !important; }
+                .text-purple-400 { color: #84cc16 !important; }
+            `,
+            sunset: `
+                :root { --bg-main: #18181b; --bg-glass: rgba(24, 24, 27, 0.95); }
+                .bg-slate-950 { background-color: #09090b !important; }
+                .bg-slate-900 { background-color: #18181b !important; }
+                .bg-slate-800 { background-color: #27272a !important; }
+                .border-slate-700 { border-color: #3f3f46 !important; }
+                .border-slate-800 { border-color: #27272a !important; }
+                .text-blue-400 { color: #f97316 !important; }
+                .text-emerald-400 { color: #ef4444 !important; }
+                .bg-blue-600 { background-color: #ea580c !important; }
+                .text-purple-400 { color: #facc15 !important; }
+            `,
+            dracula: `
+                :root { --bg-main: #0f0019; --bg-glass: rgba(15, 0, 25, 0.95); }
+                .bg-slate-950 { background-color: #0f0019 !important; }
+                .bg-slate-900 { background-color: #1a0029 !important; }
+                .bg-slate-800 { background-color: #2e0242 !important; }
+                .border-slate-700 { border-color: #4a0461 !important; }
+                .border-slate-800 { border-color: #2e0242 !important; }
+                .text-blue-400 { color: #d8b4fe !important; }
+                .text-emerald-400 { color: #f472b6 !important; }
+                .bg-blue-600 { background-color: #9333ea !important; }
+                .text-purple-400 { color: #e879f9 !important; }
+            `
         };
 
+        // --- 1. UTILS, ICONS & TOAST SYSTEM ---
         const Icon = ({ name, size=24, className="" }) => {
             const paths = {
                 close: <path d="M18 6L6 18M6 6l12 12" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>,
@@ -110,6 +156,7 @@
                 run: <path d="M19 16l-3-2 1-4-3 1-1-4-4 2v3l-2 3H3v-2h3l2-3-1-3 2-1 3-1 2 2-2 4 4 3 2-2z" strokeWidth="2"/>,
                 save: <g><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></g>,
                 user: <g><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></g>,
+                google: <path d="M12 22C6.477 22 2 17.523 2 12S6.477 2 12 2s10 4.477 10 10-4.477 10-10 10zm-1.05-5.263l-1.425-1.425 2.1-2.1H7.8v-2h3.825l-2.1-2.1 1.425-1.425 4.525 4.525-4.525 4.525z" strokeWidth="2"/>,
                 palette: <g><path d="M12 21a9.004 9.004 0 0 0 8.716-6.747M12 21a9.004 9.004 0 0 1-8.716-6.747M12 21c2.485 0 4.5-4.03 4.5-9S14.485 3 12 3m0 18c-2.485 0-4.5-4.03-4.5-9S9.515 3 12 3m0 0a8.997 8.997 0 0 1 7.843 4.582M12 3a8.997 8.997 0 0 0-7.843 4.582m15.686 0A11.953 11.953 0 0 1 12 10.5c-2.998 0-5.74-1.1-7.843-2.918m15.686 0A8.959 8.959 0 0 1 21 12c0 .778-.099 1.533-.284 2.253m0 0A17.919 17.919 0 0 1 12 16.5c-3.162 0-6.133-.815-8.716-2.247m0 0A9.015 9.015 0 0 1 3 12c0-1.605.42-3.113 1.157-4.418" strokeWidth="2"/></g>
             };
             return <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>{paths[name]}</svg>;
@@ -120,7 +167,10 @@
                 {toasts.map(t => (
                     <div key={t.id} className="toast-enter bg-slate-800 border-l-4 border-emerald-500 text-white px-4 py-3 rounded shadow-2xl flex items-center gap-3 min-w-[200px]">
                         <Icon name="check" size={18} className="text-emerald-400" />
-                        <div><h4 className="font-bold text-sm">{t.title}</h4>{t.msg && <p className="text-xs text-slate-400">{t.msg}</p>}</div>
+                        <div>
+                            <h4 className="font-bold text-sm">{t.title}</h4>
+                            {t.msg && <p className="text-xs text-slate-400">{t.msg}</p>}
+                        </div>
                     </div>
                 ))}
             </div>
@@ -134,8 +184,11 @@
             return [val, setVal];
         };
 
+        // --- 2. WORKER & NOTIFICATIONS ---
         const createWorker = () => {
-            const blob = new Blob([`self.onmessage = function(e) { if (e.data === 'start') setInterval(() => self.postMessage('tick'), 10000); };`], { type: 'application/javascript' });
+            const blob = new Blob([`
+                self.onmessage = function(e) { if (e.data === 'start') setInterval(() => self.postMessage('tick'), 10000); };
+            `], { type: 'application/javascript' });
             return new Worker(URL.createObjectURL(blob));
         };
 
@@ -153,18 +206,29 @@
 
             const requestPermission = () => {
                 if (!("Notification" in window)) return alert("Navegador sem suporte.");
-                Notification.requestPermission().then(p => { setPerm(p); if(p === 'granted') new Notification("🔔 KMZ Enterprise", { body: "Notificações ativadas!" }); });
+                Notification.requestPermission().then(p => {
+                    setPerm(p);
+                    if(p === 'granted') new Notification("🔔 Dev.Pro Suite", { body: "Notificações ativadas!" });
+                });
             };
 
             const checkEvents = () => {
                 if (perm !== 'granted') return;
-                const now = new Date(); const k = now.toISOString().split('T')[0]; const dailyEvents = events[k] || [];
+                const now = new Date();
+                const k = now.toISOString().split('T')[0];
+                const dailyEvents = events[k] || [];
                 const currentHM = `${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}`;
+
                 dailyEvents.forEach(evt => {
                     const timeMatch = evt.match(/^(\d{2}:\d{2})/);
-                    if (timeMatch && timeMatch[1] === currentHM && !notified.includes(k + evt)) {
-                        try { new Notification("⏰ Lembrete", { body: evt.replace(/^\d{2}:\d{2}\s*-\s*/, ''), requireInteraction: true }); } catch(e) {}
-                        setNotified(prev => [...prev, k + evt]);
+                    if (timeMatch) {
+                        const eventTime = timeMatch[1];
+                        const eventId = k + evt; 
+                        if (eventTime === currentHM && !notified.includes(eventId)) {
+                            const cleanText = evt.replace(/^\d{2}:\d{2}\s*-\s*/, '');
+                            try { new Notification("⏰ Lembrete", { body: cleanText, requireInteraction: true }); } catch(e) {}
+                            setNotified(prev => [...prev, eventId]);
+                        }
                     }
                 });
             };
@@ -179,11 +243,18 @@
             return [perm, requestPermission];
         };
 
+        // --- 3. UI COMPONENTS & HELPERS ---
         const CalculatorModal = ({ close }) => {
             const [disp, setDisp] = useState("");
             const [prev, setPrev] = useState("");
             const [angleMode, setAngleMode] = useState('deg'); 
-            const toggleMode = () => { if(angleMode === 'deg') setAngleMode('rad'); else if(angleMode === 'rad') setAngleMode('gra'); else setAngleMode('deg'); };
+
+            const toggleMode = () => {
+                if(angleMode === 'deg') setAngleMode('rad');
+                else if(angleMode === 'rad') setAngleMode('gra');
+                else setAngleMode('deg');
+            };
+
             const btns = [
                 {l:'(', f:'('}, {l:')', f:')'}, {l:'C', f:'C', c:'bg-red-900/50 text-red-200'}, {l:'DEL', f:'DEL', c:'bg-orange-900/50 text-orange-200'},
                 {l:'sin', f:'sin('}, {l:'cos', f:'cos('}, {l:'tan', f:'tan('}, {l:'/', f:'/', c:'bg-indigo-900/50 text-indigo-200'},
@@ -199,33 +270,68 @@
                 else if(b==='DEL') setDisp(disp.slice(0, -1));
                 else if(b==='=') { 
                     try { 
-                        const toRad = (x) => { if (angleMode === 'deg') return x * (Math.PI / 180); if (angleMode === 'gra') return x * (Math.PI / 200); return x; };
-                        const MathContext = { sin: (x) => Math.sin(toRad(x)), cos: (x) => Math.cos(toRad(x)), tan: (x) => Math.tan(toRad(x)), log: Math.log, log10: Math.log10, sqrt: Math.sqrt, pow: Math.pow, PI: Math.PI };
-                        let expr = disp.replace(/sin/g, 'MathContext.sin').replace(/cos/g, 'MathContext.cos').replace(/tan/g, 'MathContext.tan').replace(/log10/g, 'MathContext.log10').replace(/\blog\b/g, 'MathContext.log10').replace(/ln/g, 'MathContext.log').replace(/sqrt/g, 'MathContext.sqrt').replace(/\^/g, '**').replace(/π/g, 'MathContext.PI');
+                        const toRad = (x) => {
+                            if (angleMode === 'deg') return x * (Math.PI / 180);
+                            if (angleMode === 'gra') return x * (Math.PI / 200);
+                            return x; 
+                        };
+                        const MathContext = {
+                            sin: (x) => Math.sin(toRad(x)), cos: (x) => Math.cos(toRad(x)), tan: (x) => Math.tan(toRad(x)),
+                            log: Math.log, log10: Math.log10, sqrt: Math.sqrt, pow: Math.pow, PI: Math.PI
+                        };
+                        let expr = disp.replace(/sin/g, 'MathContext.sin').replace(/cos/g, 'MathContext.cos').replace(/tan/g, 'MathContext.tan')
+                            .replace(/log10/g, 'MathContext.log10').replace(/\blog\b/g, 'MathContext.log10').replace(/ln/g, 'MathContext.log')
+                            .replace(/sqrt/g, 'MathContext.sqrt').replace(/\^/g, '**').replace(/π/g, 'MathContext.PI');
                         const res = eval(expr);
-                        setPrev(disp + " ="); setDisp(Number(res).toLocaleString('en-US', {maximumFractionDigits:8}).replace(/,/g,'')); 
+                        setPrev(disp + " =");
+                        setDisp(Number(res).toLocaleString('en-US', {maximumFractionDigits:8}).replace(/,/g,'')); 
                     } catch { setDisp("Erro"); } 
                 } else setDisp(disp+b);
             };
 
             return (
                 <div className="w-full">
-                    <div className="flex justify-between items-start mb-4"><h3 className="text-white font-bold flex items-center gap-2"><Icon name="calc" size={18}/> Casio FX-Dev</h3><button onClick={close} className="bg-red-500/20 text-red-400 p-2 rounded-full hover:bg-red-500 hover:text-white transition-colors"><Icon name="close" size={16}/></button></div>
-                    <div className="bg-[#9ea792] p-4 rounded-t-xl border-4 border-slate-700 h-28 flex flex-col justify-between shadow-inner mb-4 relative overflow-hidden"><div className="absolute inset-0 bg-black/5 pointer-events-none"></div><div className="z-10 flex justify-between w-full"><button onClick={toggleMode} className="text-[10px] font-bold text-slate-700 bg-slate-500/20 px-1.5 py-0.5 rounded border border-slate-600/30 uppercase">{angleMode}</button><span className="text-slate-800 font-lcd text-xs h-4">{prev}</span></div><span className="text-slate-900 font-lcd text-3xl font-bold tracking-widest overflow-x-auto whitespace-nowrap w-full text-right z-10">{disp || "0"}</span></div>
-                    <div className="grid grid-cols-4 gap-2 bg-slate-800 p-3 rounded-b-xl border border-t-0 border-slate-700">{btns.map((b, i) => (<button key={i} onClick={()=>calc(b.f)} className={`p-3 rounded-lg font-bold text-xs shadow-[0_3px_0_rgba(0,0,0,0.3)] active:translate-y-[3px] border border-white/5 ${b.c ? b.c : 'bg-slate-700 text-slate-200'} ${b.l==='=' ? 'row-span-2 flex items-center justify-center' : ''}`}>{b.l}</button>))}</div>
+                    <div className="flex justify-between items-start mb-4">
+                        <h3 className="text-white font-bold flex items-center gap-2"><Icon name="calc" size={18}/> Casio FX-Dev</h3>
+                        <button onClick={close} className="bg-red-500/20 text-red-400 p-2 rounded-full hover:bg-red-500 hover:text-white transition-colors"><Icon name="close" size={16}/></button>
+                    </div>
+                    <div className="bg-[#9ea792] p-4 rounded-t-xl border-4 border-slate-700 h-28 flex flex-col justify-between shadow-inner mb-4 relative overflow-hidden">
+                        <div className="absolute inset-0 bg-black/5 pointer-events-none"></div>
+                        <div className="z-10 flex justify-between w-full">
+                            <button onClick={toggleMode} className="text-[10px] font-bold text-slate-700 bg-slate-500/20 px-1.5 py-0.5 rounded border border-slate-600/30 hover:bg-slate-500/30 transition-colors uppercase tracking-widest">{angleMode}</button>
+                            <span className="text-slate-800 font-lcd text-xs h-4">{prev}</span>
+                        </div>
+                        <span className="text-slate-900 font-lcd text-3xl font-bold tracking-widest overflow-x-auto whitespace-nowrap w-full text-right z-10">{disp || "0"}</span>
+                    </div>
+                    <div className="grid grid-cols-4 gap-2 bg-slate-800 p-3 rounded-b-xl border border-t-0 border-slate-700">
+                        {btns.map((b, i) => (
+                            <button key={i} onClick={()=>calc(b.f)} className={`p-3 rounded-lg font-bold text-xs shadow-[0_3px_0_rgba(0,0,0,0.3)] active:shadow-none active:translate-y-[3px] transition-all border border-white/5 ${b.c ? b.c : 'bg-slate-700 text-slate-200 hover:bg-slate-600'} ${b.l==='=' ? 'row-span-2 flex items-center justify-center' : ''}`}>{b.l}</button>
+                        ))}
+                    </div>
                 </div>
             );
         };
 
         const Modal = ({ cfg, close }) => {
-            const [t, setT] = useState(""); const [time, setTime] = useState(""); const [extra, setExtra] = useState(""); const [prot, setProt] = useState(""); const [carb, setCarb] = useState(""); const [fat, setFat] = useState("");
-            useEffect(() => { if(cfg.open) { setT(cfg.init||""); setTime(""); setExtra(""); setProt(""); setCarb(""); setFat(""); } }, [cfg.open, cfg.init]);
+            const [t, setT] = useState("");
+            const [time, setTime] = useState("");
+            const [extra, setExtra] = useState(""); 
+            const [prot, setProt] = useState("");
+            const [carb, setCarb] = useState("");
+            const [fat, setFat] = useState("");
+
+            useEffect(() => { 
+                if(cfg.open) { 
+                    setT(cfg.init||""); setTime(""); setExtra(""); setProt(""); setCarb(""); setFat("");
+                } 
+            }, [cfg.open, cfg.init]);
+
             if(!cfg.open) return null;
 
             const handleOk = () => {
                 if (!t.trim() && !cfg.customValidation) return;
                 let finalVal = t;
-                if (cfg.isEvent) { finalVal = `${time ? time : "00:00"} - ${t}`; }
+                if (cfg.isEvent) { const timePrefix = time ? time : "00:00"; finalVal = `${timePrefix} - ${t}`; }
                 if (cfg.isWorkoutPlan) { finalVal = { name: t, id: Date.now(), exercises: [] }; }
                 if (cfg.isExercise) { finalVal = { name: t, sets: extra, id: Date.now() }; }
                 if (cfg.isDietPlan) { finalVal = { name: t, cal: Number(extra)||0, p: Number(prot)||0, c: Number(carb)||0, f: Number(fat)||0, id: Date.now() }; }
@@ -238,21 +344,32 @@
                     <div className="bg-slate-900 border border-slate-700 w-full max-w-sm rounded-2xl p-6 shadow-2xl relative">
                         {cfg.isCalc ? <CalculatorModal close={close} /> : (
                             <>
-                                <div className="flex justify-between items-center mb-6"><h3 className="text-white font-bold text-lg">{cfg.title}</h3><button onClick={close} className="text-slate-400 hover:text-white"><Icon name="close" size={20}/></button></div>
+                                <div className="flex justify-between items-center mb-6">
+                                    <h3 className="text-white font-bold text-lg">{cfg.title}</h3>
+                                    <button onClick={close} className="text-slate-400 hover:text-white"><Icon name="close" size={20}/></button>
+                                </div>
                                 {!cfg.alert && (
                                     <div className="space-y-3 mb-4">
-                                        {cfg.isEvent && (<div><label className="text-[10px] text-slate-400 font-bold uppercase ml-1">Horário</label><input type="time" value={time} onChange={e=>setTime(e.target.value)} className="w-full bg-slate-950 border border-slate-700 p-3 rounded-lg text-white outline-none"/></div>)}
-                                        <div><label className="text-[10px] text-slate-400 font-bold uppercase ml-1">{cfg.lbl || "Nome / Descrição"}</label><input autoFocus value={t} onChange={e=>setT(e.target.value)} placeholder={cfg.ph} className="w-full bg-slate-950 border border-slate-700 p-3 rounded-lg text-white outline-none"/></div>
-                                        {cfg.isExercise && (<div><label className="text-[10px] text-slate-400 font-bold uppercase ml-1">Meta (Ex: 3x12)</label><input value={extra} onChange={e=>setExtra(e.target.value)} placeholder="Ex: 3x12" className="w-full bg-slate-950 border border-slate-700 p-3 rounded-lg text-white outline-none"/></div>)}
+                                        {cfg.isEvent && (<div><label className="text-[10px] text-slate-400 font-bold uppercase ml-1">Horário</label><input type="time" value={time} onChange={e=>setTime(e.target.value)} className="w-full bg-slate-950 border border-slate-700 p-3 rounded-lg text-white outline-none focus:border-blue-500"/></div>)}
+                                        <div>
+                                            <label className="text-[10px] text-slate-400 font-bold uppercase ml-1">{cfg.lbl || "Nome / Descrição"}</label>
+                                            <input autoFocus value={t} onChange={e=>setT(e.target.value)} placeholder={cfg.ph} className="w-full bg-slate-950 border border-slate-700 p-3 rounded-lg text-white outline-none focus:border-blue-500"/>
+                                        </div>
+                                        {cfg.isExercise && (<div><label className="text-[10px] text-slate-400 font-bold uppercase ml-1">Meta (Ex: 3x12)</label><input value={extra} onChange={e=>setExtra(e.target.value)} placeholder="Ex: 3x12" className="w-full bg-slate-950 border border-slate-700 p-3 rounded-lg text-white outline-none focus:border-red-500"/></div>)}
                                         {cfg.isDietPlan && (
                                             <>
-                                                <div><label className="text-[10px] text-slate-400 font-bold uppercase ml-1">Calorias (Kcal)</label><input type="number" value={extra} onChange={e=>setExtra(e.target.value)} className="w-full bg-slate-950 border border-slate-700 p-3 rounded-lg text-white outline-none"/></div>
-                                                <div className="grid grid-cols-3 gap-2"><div><label className="text-[10px] text-slate-400 font-bold">Prot</label><input type="number" value={prot} onChange={e=>setProt(e.target.value)} className="w-full bg-slate-950 border border-slate-700 p-2 rounded text-white"/></div><div><label className="text-[10px] text-slate-400 font-bold">Carb</label><input type="number" value={carb} onChange={e=>setCarb(e.target.value)} className="w-full bg-slate-950 border border-slate-700 p-2 rounded text-white"/></div><div><label className="text-[10px] text-slate-400 font-bold">Gord</label><input type="number" value={fat} onChange={e=>setFat(e.target.value)} className="w-full bg-slate-950 border border-slate-700 p-2 rounded text-white"/></div></div>
+                                                <div><label className="text-[10px] text-slate-400 font-bold uppercase ml-1">Calorias (Kcal)</label><input type="number" value={extra} onChange={e=>setExtra(e.target.value)} placeholder="0" className="w-full bg-slate-950 border border-slate-700 p-3 rounded-lg text-white outline-none focus:border-green-500"/></div>
+                                                <div className="grid grid-cols-3 gap-2">
+                                                    <div><label className="text-[10px] text-slate-400 font-bold uppercase">Prot (g)</label><input type="number" value={prot} onChange={e=>setProt(e.target.value)} className="w-full bg-slate-950 border border-slate-700 p-2 rounded text-white"/></div>
+                                                    <div><label className="text-[10px] text-slate-400 font-bold uppercase">Carb (g)</label><input type="number" value={carb} onChange={e=>setCarb(e.target.value)} className="w-full bg-slate-950 border border-slate-700 p-2 rounded text-white"/></div>
+                                                    <div><label className="text-[10px] text-slate-400 font-bold uppercase">Gord (g)</label><input type="number" value={fat} onChange={e=>setFat(e.target.value)} className="w-full bg-slate-950 border border-slate-700 p-2 rounded text-white"/></div>
+                                                </div>
                                             </>
                                         )}
                                     </div>
                                 )}
-                                <div className="flex justify-end gap-3"><button onClick={close} className="text-slate-400 hover:text-white px-3 py-2 text-sm font-bold">Cancelar</button><button onClick={handleOk} className={`${cfg.del ? 'bg-red-600' : 'bg-blue-600'} text-white px-5 py-2 rounded-lg font-bold text-sm`}>Confirmar</button></div>
+                                {cfg.alert && <p className="text-slate-300 mb-6 text-sm leading-relaxed">{cfg.msg}</p>}
+                                <div className="flex justify-end gap-3"><button onClick={close} className="text-slate-400 hover:text-white px-3 py-2 text-sm font-bold transition-colors">Cancelar</button><button onClick={handleOk} className={`${cfg.del ? 'bg-red-600' : 'bg-blue-600'} text-white px-5 py-2 rounded-lg font-bold text-sm shadow-lg`}>Confirmar</button></div>
                             </>
                         )}
                     </div>
@@ -265,12 +382,12 @@
             return (<div className="grid grid-cols-4 gap-2">{links.map(l => (<a key={l.n} href={l.u} target="_blank" className={`${l.c} h-12 rounded-xl flex items-center justify-center text-[10px] font-bold text-white shadow-lg active:scale-95 transition-transform`}>{l.n}</a>))}</div>);
         };
 
-        const Scratchpad = () => {
-            const [txt, setTxt] = useStorage("scratchpad_v28", '');
+        const Scratchpad = ({ title="Rascunho Rápido", storageKey="scratchpad_v28" }) => {
+            const [txt, setTxt] = useStorage(storageKey, '');
             return (
                 <div className="bg-slate-800 border border-slate-700 p-3 rounded-xl flex flex-col h-40 relative">
-                    <div className="flex justify-between items-center mb-2"><h4 className="text-[10px] text-slate-400 font-bold uppercase flex items-center gap-1"><Icon name="edit" size={12}/> Rascunho Rápido</h4>{txt && <button onClick={()=>setTxt("")} className="text-[10px] text-slate-500 hover:text-red-400 font-bold">LIMPAR</button>}</div>
-                    <textarea className="flex-1 bg-slate-900/50 rounded border border-slate-700/50 p-2 text-xs text-slate-300 outline-none resize-none" placeholder="Digite aqui..." value={txt} onChange={e=>setTxt(e.target.value)}/>
+                    <div className="flex justify-between items-center mb-2"><h4 className="text-[10px] text-slate-400 font-bold uppercase flex items-center gap-1"><Icon name="edit" size={12}/> {title}</h4>{txt && <button onClick={()=>setTxt("")} className="text-[10px] text-slate-500 hover:text-red-400 font-bold">LIMPAR</button>}</div>
+                    <textarea className="flex-1 bg-slate-900/50 rounded border border-slate-700/50 p-2 text-xs text-slate-300 outline-none resize-none placeholder:text-slate-600" placeholder="Digite aqui..." value={txt} onChange={e=>setTxt(e.target.value)}/>
                 </div>
             );
         };
@@ -286,13 +403,15 @@
             }, []);
             return (
                 <>
+                {/* Micro-mensagens de Sistema */}
                 <div className="bg-slate-900/50 border-y border-slate-800 h-6 flex items-center overflow-hidden mb-2">
                      <div className="marquee-container w-full">
-                        <span className="marquee-text text-[9px] font-mono text-blue-400 uppercase">
+                        <span className="marquee-text text-[9px] font-mono text-emerald-400 uppercase">
                              🚀 KMZ Enterprise System • Banco de Dados Local • {user ? `Logado como: ${user.displayName}` : 'Modo Visitante'} • Suporte: kmzsuportt1@gmail.com
                         </span>
                      </div>
                 </div>
+
                 <div className="flex gap-2 mb-4">
                     <div className={`flex-1 p-2 rounded-lg flex items-center justify-center gap-2 text-xs font-bold border ${online ? 'bg-emerald-900/20 border-emerald-800 text-emerald-400' : 'bg-red-900/20 border-red-800 text-red-400'}`}><Icon name="wifi" size={14}/> {online ? 'Online' : 'Offline'}</div>
                     <div className="flex-1 p-2 rounded-lg flex items-center justify-center gap-2 text-xs font-bold bg-slate-800 border border-slate-700 text-slate-400"><Icon name="battery" size={14}/> {bat !== null ? bat + '%' : '--'}</div>
@@ -301,9 +420,21 @@
             );
         };
 
+        const FinanceCard = ({ label, value, trend, isBtc }) => (
+            <div className="bg-slate-800 border border-slate-700 p-3 rounded-xl flex flex-col items-center justify-center">
+                <span className="text-[10px] text-slate-400 font-bold uppercase mb-1">{label}</span>
+                <div className="text-lg font-mono font-bold text-white flex items-center gap-1">{isBtc ? <span className="text-sm">R$ {value ? parseFloat(value).toLocaleString('pt-BR', {maximumFractionDigits:0}) : "--"}</span> : <><span className="text-xs text-slate-500">R$</span>{value ? parseFloat(value).toFixed(2) : "--"}</>}</div>
+                {!isBtc && trend && <span className={`text-[10px] font-bold ${parseFloat(trend) >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>{parseFloat(trend) > 0 ? '+' : ''}{trend}%</span>}
+            </div>
+        );
+
         const MiniWeek = ({ events, onGoToAgenda }) => {
             const [sel, setSel] = useState(new Date());
-            const days = useMemo(() => { const arr = []; const today = new Date(); today.setHours(12,0,0,0); for(let i=0; i<7; i++) { const d = new Date(today); d.setDate(today.getDate() + i); arr.push(d); } return arr; }, []);
+            const days = useMemo(() => { 
+                const arr = []; const today = new Date(); today.setHours(12,0,0,0); 
+                for(let i=0; i<7; i++) { const d = new Date(today); d.setDate(today.getDate() + i); arr.push(d); } 
+                return arr; 
+            }, []);
             const k = (d) => d.toISOString().split('T')[0];
             const getEvts = (d) => { const daily = events[k(d)] || []; return [...daily].sort((a,b) => a.localeCompare(b)); };
             const selEvts = getEvts(sel);
@@ -313,88 +444,531 @@
                     <div className="flex gap-2 overflow-x-auto pb-2 no-scrollbar mb-2">
                         {days.map(d => { 
                             const isSel = d.toDateString() === sel.toDateString(); 
+                            const hasEvt = getEvts(d).length > 0; 
                             return (
-                                <button key={d.toISOString()} onClick={()=>setSel(d)} className={`flex flex-col items-center justify-center min-w-[45px] h-14 rounded-lg transition-colors border ${isSel ? 'bg-blue-600 border-blue-500 text-white' : 'bg-slate-900 border-slate-700 text-slate-400'}`}>
+                                <button key={d.toISOString()} onClick={()=>setSel(d)} className={`flex flex-col items-center justify-center min-w-[45px] h-14 rounded-lg transition-colors border ${isSel ? 'bg-blue-600 border-blue-500 text-white' : 'bg-slate-900 border-slate-700 text-slate-400 hover:bg-slate-750'}`}>
                                     <span className="text-[9px] font-bold uppercase">{d.toLocaleDateString('pt-BR', {weekday:'short'}).replace('.','')}</span>
                                     <span className="text-sm font-bold">{d.getDate()}</span>
-                                    {getEvts(d).length > 0 && <span className={`w-1 h-1 rounded-full mt-1 ${isSel?'bg-white':'bg-blue-400'}`}></span>}
+                                    {hasEvt && <span className={`w-1 h-1 rounded-full mt-1 ${isSel?'bg-white':'bg-blue-400'}`}></span>}
                                 </button>
                             )
                         })}
                     </div>
                     <div className="bg-slate-900/50 rounded-lg p-2 min-h-[40px]">
-                        {selEvts.length > 0 ? (<div className="space-y-1">{selEvts.map((e, i) => { const timeMatch = e.match(/^(\d{2}:\d{2})\s-\s(.+)/); return (<div key={i} className="text-xs text-slate-200 flex items-start gap-2">{timeMatch && <span className="font-mono font-bold text-blue-400 text-[10px] mt-0.5">{timeMatch[1]}</span>}<span className="break-words flex-1">{timeMatch ? timeMatch[2] : e}</span></div>); })}</div>) : (<p className="text-[10px] text-slate-600 text-center py-1">Sem compromissos.</p>)}
+                        {selEvts.length > 0 ? (<div className="space-y-1">{selEvts.map((e, i) => { const timeMatch = e.match(/^(\d{2}:\d{2})\s-\s(.+)/); const time = timeMatch ? timeMatch[1] : ""; const text = timeMatch ? timeMatch[2] : e; return (<div key={i} className="text-xs text-slate-200 flex items-start gap-2">{time && <span className="font-mono font-bold text-blue-400 text-[10px] mt-0.5">{time}</span>}<span className="break-words flex-1">{text}</span></div>); })}</div>) : (<p className="text-[10px] text-slate-600 text-center py-1">Sem compromissos.</p>)}
                     </div>
                 </div>
             );
         };
 
-        const Dashboard = ({ openCalc, events, setTab, requestNotify, notifyPerm, user }) => {
-            const [weather, setWeather] = useState(null);
-            const getTodayCount = () => { const k = new Date().toISOString().split('T')[0]; return events[k] ? events[k].length : 0; };
-            const todayCount = getTodayCount();
-            
-            useEffect(() => { 
-                fetch(`https://api.open-meteo.com/v1/forecast?latitude=-25.4597&longitude=-49.5286&current=temperature_2m,weather_code,relative_humidity_2m,wind_speed_10m&timezone=auto`)
-                    .then(r=>r.json()).then(d=>setWeather({ temp: d.current.temperature_2m, code: d.current.weather_code, humid: d.current.relative_humidity_2m, wind: d.current.wind_speed_10m })).catch(()=>null);
-            }, []);
+        // --- FEATURE TABS ---
+        const ShoppingList = ({ addToast }) => {
+            const [shopList, setShopList] = useStorage('shopping_list_v34', []);
+            const [newItem, setNewItem] = useState("");
+            const [qty, setQty] = useState(1);
+            const [price, setPrice] = useState("");
+            const [cat, setCat] = useState("Mercado");
+            const categories = ["Mercado", "Casa", "Tech", "Outros"];
+            const addItem = (e) => { e.preventDefault(); if(!newItem.trim()) return; setShopList([...shopList, {id: Date.now(), txt: newItem, q:qty, p:Number(price)||0, done: false, category: cat}]); setNewItem(""); setQty(1); setPrice(""); addToast("Item Adicionado"); };
+            const toggle = (id) => setShopList(shopList.map(i => i.id===id ? {...i, done: !i.done} : i));
+            const remove = (id) => { setShopList(shopList.filter(i => i.id!==id)); addToast("Item Removido"); };
+            const total = shopList.reduce((acc, i) => acc + (i.p * i.q), 0);
+            return (
+                <div className="h-full flex flex-col fade-in">
+                    <div className="glass p-4 sticky top-0 z-10 border-b border-slate-800 flex justify-between items-center"><h2 className="text-xl font-bold text-emerald-400 flex items-center gap-2"><Icon name="cart" size={20}/> Compras</h2></div>
+                    <div className="content p-4 space-y-4">
+                        <form onSubmit={addItem} className="bg-slate-800 p-3 rounded-xl border border-slate-700 flex flex-col gap-2">
+                            <input value={newItem} onChange={e=>setNewItem(e.target.value)} placeholder="Item..." className="bg-slate-900 border border-slate-600 rounded px-3 py-2 text-sm outline-none text-white w-full"/>
+                            <div className="flex gap-2">
+                                <input type="number" value={qty} onChange={e=>setQty(Math.max(1, e.target.value))} className="bg-slate-900 border border-slate-600 rounded px-3 py-2 text-sm outline-none text-white w-20" placeholder="Qtd"/>
+                                <input type="number" value={price} onChange={e=>setPrice(e.target.value)} className="bg-slate-900 border border-slate-600 rounded px-3 py-2 text-sm outline-none text-white flex-1" placeholder="R$ Estimado"/>
+                            </div>
+                            <div className="flex gap-2 overflow-x-auto pb-1 no-scrollbar">{categories.map(c => (<button type="button" key={c} onClick={()=>setCat(c)} className={`text-[10px] px-3 py-1 rounded-full font-bold transition-colors whitespace-nowrap ${cat===c ? 'bg-emerald-600 text-white' : 'bg-slate-700 text-slate-400'}`}>{c}</button>))}</div>
+                            <button className="bg-emerald-600 text-white w-full py-2 rounded-lg font-bold text-xs mt-1 shadow-lg">ADICIONAR</button>
+                        </form>
+                        <div className="bg-slate-800 border border-slate-700 p-3 rounded-xl flex justify-between items-center"><span className="text-xs text-slate-400 uppercase font-bold">Total Estimado</span><span className="text-xl font-bold text-emerald-400">R$ {total.toFixed(2)}</span></div>
+                        <div className="space-y-4">
+                            {categories.map(category => {
+                                const items = shopList.filter(i => i.category === category || (!i.category && category==="Outros"));
+                                if(items.length === 0) return null;
+                                return (
+                                    <div key={category}>
+                                        <h3 className="text-xs font-bold text-slate-500 uppercase mb-2 ml-1">{category}</h3>
+                                        <div className="bg-slate-800 border border-slate-700 rounded-xl overflow-hidden">
+                                            {items.map(item => (
+                                                <div key={item.id} className="flex items-center gap-3 p-3 border-b border-slate-700 last:border-0 hover:bg-slate-750 transition-colors">
+                                                    <button onClick={()=>toggle(item.id)} className={`w-5 h-5 rounded border flex items-center justify-center transition-all ${item.done?'bg-emerald-600 border-emerald-600':'border-slate-500'}`}>{item.done && <Icon name="check" size={14} className="text-white"/>}</button>
+                                                    <div className="flex-1"><span className={`text-sm block ${item.done?'text-slate-600 line-through':'text-slate-200'}`}>{item.txt}</span><span className="text-[10px] text-slate-500 block">Qtd: {item.q} • R$ {item.p.toFixed(2)} un.</span></div>
+                                                    <button onClick={()=>remove(item.id)} className="text-slate-600 hover:text-red-400"><Icon name="trash" size={16}/></button>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    </div>
+                                );
+                            })}
+                        </div>
+                    </div>
+                </div>
+            );
+        };
 
-            const wStatus = weather && weather.code === 0 ? {t:"Limpo", i:"sun", c:"text-yellow-400"} : {t:"Nublado/Chuva", i:"cloud", c:"text-blue-300"};
+        const Habits = ({ modal }) => {
+            const [list, setList] = useStorage('habits_v24', []);
+            return (
+                <div className="h-full flex flex-col fade-in">
+                    <div className="glass p-4 flex justify-between items-center z-10 border-b border-slate-800"><h2 className="text-xl font-bold text-blue-400 flex items-center gap-2"><Icon name="list" size={20}/> Hábitos</h2><button onClick={()=>modal({open:true, title:"Novo", ok:t=>t&&setList([...list,{id:Date.now(),t}])})} className="bg-blue-600 text-white p-2 rounded-lg"><Icon name="plus" size={20}/></button></div>
+                    <div className="content p-4 space-y-3">
+                        {list.map(i => (<div key={i.id} className="bg-slate-800 border border-slate-700 p-4 rounded-xl flex justify-between items-center"><span className="text-slate-200">{i.t}</span><button onClick={()=>setList(list.filter(x=>x.id!==i.id))} className="text-slate-500 hover:text-emerald-400"><Icon name="check" size={24}/></button></div>))}
+                        {!list.length && <p className="text-center text-slate-600 mt-10">Lista vazia.</p>}
+                    </div>
+                </div>
+            );
+        };
+
+        const Agenda = ({ modal, evts, setEvts, addToast }) => {
+             const [dt, setDt] = useState(new Date());
+             const k = d => d.toISOString().split('T')[0];
+             const selK = k(dt);
+             const getDaysInMonth = (date) => new Date(date.getFullYear(), date.getMonth() + 1, 0).getDate();
+             const getFirstDayOfMonth = (date) => new Date(date.getFullYear(), date.getMonth(), 1).getDay();
+             const daysInMonth = getDaysInMonth(dt);
+             const firstDay = getFirstDayOfMonth(dt); 
+             const holidays = { "01-01": "Confraternização Universal", "04-21": "Tiradentes", "05-01": "Dia do Trabalho", "09-07": "Independência", "10-12": "Nossa Sra. Aparecida", "11-02": "Finados", "11-15": "Proclamação da República", "12-25": "Natal" };
+             const checkHoliday = (d, m) => { const key = `${(m+1).toString().padStart(2,'0')}-${d.toString().padStart(2,'0')}`; return holidays[key]; };
+             const getSortedEvents = (dateKey) => { const dailyEvents = evts[dateKey] || []; return [...dailyEvents].sort((a,b) => a.localeCompare(b)); };
+             const sortedDayEvents = getSortedEvents(selK);
+
+             return (
+                <div className="flex flex-col h-full fade-in">
+                    <div className="glass p-4 flex justify-between items-center border-b border-slate-800"><button onClick={()=>setDt(new Date(dt.getFullYear(),dt.getMonth()-1,1))}><Icon name="back" className="rotate-180"/></button><div className="text-center"><span className="font-bold text-purple-400 block uppercase text-lg">{dt.toLocaleString('pt-BR',{month:'long'})}</span><span className="text-xs text-slate-500 font-bold">{dt.getFullYear()}</span></div><button onClick={()=>setDt(new Date(dt.getFullYear(),dt.getMonth()+1,1))}><Icon name="back" className="scale-x-[-1]"/></button></div>
+                    <div className="content p-4">
+                        <div className="grid grid-cols-7 gap-1 text-center mb-2">{['D','S','T','Q','Q','S','S'].map((d,i)=> <span key={i} className={`text-xs font-bold ${i===0 || i===6 ? 'text-red-400/70':'text-slate-500'}`}>{d}</span>)}</div>
+                        <div className="grid grid-cols-7 gap-1 text-center mb-6">
+                            {Array.from({length: daysInMonth}).map((_,i)=>{
+                                const d = i+1; const currentDayObj = new Date(dt.getFullYear(), dt.getMonth(), d); const isSel = d === dt.getDate(); const isToday = new Date().toDateString() === currentDayObj.toDateString(); const hol = checkHoliday(d, dt.getMonth()); const hasEvt = evts[k(currentDayObj)]?.length > 0;
+                                return (<button key={d} onClick={()=>setDt(currentDayObj)} style={d===1 ? {gridColumnStart: firstDay + 1} : {}} className={`h-10 rounded-lg flex flex-col items-center justify-center relative border border-transparent ${isSel ? 'bg-purple-600 text-white shadow-lg' : 'bg-slate-800 text-slate-300 hover:bg-slate-700'} ${isToday && !isSel ? 'border-purple-500' : ''} ${hol ? 'text-red-300' : ''}`}><span className={`text-sm font-bold leading-none`}>{d}</span>{hasEvt && <span className="w-1 h-1 bg-blue-400 rounded-full mt-1"></span>}{hol && !isSel && <span className="text-[8px] opacity-50 absolute bottom-0.5">★</span>}</button>)
+                            })}
+                        </div>
+                        <div className="bg-slate-800 p-4 rounded-xl border border-slate-700 min-h-[150px]">
+                            <div className="flex justify-between mb-4 border-b border-slate-700 pb-2"><div><span className="font-bold block text-lg">Dia {dt.getDate()}</span>{checkHoliday(dt.getDate(), dt.getMonth()) && <span className="text-xs text-red-400 font-bold uppercase">{checkHoliday(dt.getDate(), dt.getMonth())}</span>}</div><button onClick={()=>modal({ open:true, title:"Novo Evento", isEvent: true, ok:t=>t&&setEvts({...evts,[selK]:[...(evts[selK]||[]),t]}) })} className="text-xs bg-purple-600 hover:bg-purple-500 text-white h-8 px-4 rounded-lg font-bold">Adicionar</button></div>
+                            {sortedDayEvents.length === 0 ? (<p className="text-slate-600 text-sm italic">Nenhum evento.</p>) : (sortedDayEvents.map((e,i)=>(<div key={i} className="py-3 border-b border-slate-700/50 flex justify-between items-center last:border-0 group"><span className="text-slate-300 text-sm before:content-['•'] before:mr-2 before:text-purple-500">{e}</span><button onClick={()=>{setEvts({...evts,[selK]:evts[selK].filter((x)=>x!==e)}); addToast("Evento Apagado")}} className="text-slate-600 hover:text-red-400 px-2"><Icon name="trash" size={14}/></button></div>)))}
+                        </div>
+                    </div>
+                </div>
+             );
+        };
+
+        const Kanban = ({ modal }) => {
+            const [tasks, setTasks] = useStorage('kanban_v24', []);
+            const cols = {todo:'A Fazer', doing:'Fazendo', done:'Feito'};
+            return (
+                <div className="flex flex-col h-full fade-in">
+                    <div className="glass p-4 border-b border-slate-800"><h2 className="text-xl font-bold text-orange-400 flex gap-2"><Icon name="kanban"/> Projetos</h2></div>
+                    <div className="flex-1 overflow-x-auto flex gap-4 p-4 pb-32 snap-x">
+                        {Object.entries(cols).map(([k,v])=>(
+                            <div key={k} className="min-w-[85vw] md:min-w-[300px] snap-center bg-slate-900 border border-slate-800 rounded-xl flex flex-col">
+                                <div className="p-3 border-b border-slate-800 flex justify-between font-bold text-slate-500 uppercase text-xs"><span>{v}</span><button onClick={()=>modal({open:true, title:"Tarefa", ok:t=>t&&setTasks([...tasks,{id:Date.now(),t,s:k}])})}>+</button></div>
+                                <div className="p-3 space-y-2 overflow-y-auto flex-1">
+                                    {tasks.filter(t=>t.s===k).map(t=>(<div key={t.id} className="bg-slate-800 p-3 rounded border border-slate-700"><p className="text-sm mb-2">{t.t}</p><div className="flex justify-end gap-1">{Object.keys(cols).filter(x=>x!==k).map(x=><button key={x} onClick={()=>setTasks(tasks.map(z=>z.id===t.id?{...z,s:x}:z))} className="text-[9px] bg-slate-950 px-2 py-1 rounded uppercase">{cols[x]}</button>)}<button onClick={()=>setTasks(tasks.filter(z=>z.id!==t.id))} className="text-[9px] bg-red-900/20 text-red-400 px-2 py-1 rounded">X</button></div></div>))}
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                </div>
+            );
+        };
+
+        const StudyTab = ({ modal, openCalc }) => {
+            const [classes, setClasses] = useStorage('study_classes_v1', {});
+            const [appointments, setAppointments] = useStorage('study_appointments_v1', []);
+            const [notebooks, setNotebooks] = useStorage('study_multi_notebook_v1', [{id:1, t:'Geral', c:''}]);
+            const [selNote, setSelNote] = useState(1);
+            
+            const [pomoTime, setPomoTime] = useState(25 * 60);
+            const [pomoActive, setPomoActive] = useState(false);
+            useEffect(() => { let i = null; if (pomoActive && pomoTime > 0) i = setInterval(() => setPomoTime(t => t - 1), 1000); return () => clearInterval(i); }, [pomoActive, pomoTime]);
+
+            const activeNote = notebooks.find(n => n.id === selNote) || notebooks[0];
+            const updateNote = (txt) => setNotebooks(notebooks.map(n => n.id === selNote ? {...n, c:txt} : n));
+            const addPage = () => { const id = Date.now(); setNotebooks([...notebooks, {id, t:'Nova Pág', c:''}]); setSelNote(id); };
+
+            const days = ["Segunda", "Terça", "Quarta", "Quinta", "Sexta", "Sábado"];
+
+            const addClass = (day) => {
+                modal({ open: true, title: `Aula - ${day}`, ph: "Matéria - Horário", ok: (val) => setClasses(prev => ({...prev, [day]: [...(prev[day]||[]), val]})) });
+            };
+            const removeClass = (day, idx) => {
+                setClasses(prev => ({...prev, [day]: classes[day].filter((_, i) => i !== idx)}));
+            };
 
             return (
                 <div className="h-full flex flex-col fade-in">
-                    <div className="glass p-5 sticky top-0 z-10 border-b border-slate-800 flex justify-between items-center">
-                        <div>
-                            <h1 className="text-xl font-bold text-white bg-clip-text text-transparent bg-gradient-to-r from-blue-400 to-purple-400">KMZ App</h1>
-                            <p className="text-[10px] text-blue-300 font-bold uppercase tracking-wider">Enterprise Edition</p>
-                        </div>
-                        <div className="flex gap-3 items-center">
-                            <button onClick={()=>setTab('profile')} className="relative"><div className="w-8 h-8 rounded-full bg-blue-600 flex items-center justify-center text-white font-bold">{user ? user.displayName.charAt(0).toUpperCase() : <Icon name="user"/>}</div></button>
-                            <button onClick={requestNotify} className="p-2 relative"><Icon name="bell" className={notifyPerm === 'granted' ? "text-emerald-400" : "text-slate-400"} />{todayCount > 0 && <span className="absolute top-0 right-0 bg-red-500 text-white text-[8px] font-bold w-4 h-4 flex items-center justify-center rounded-full animate-bounce">{todayCount}</span>}</button>
-                        </div>
+                    <div className="glass p-4 sticky top-0 z-10 border-b border-slate-800 flex justify-between items-center">
+                        <h2 className="text-xl font-bold text-cyan-400 flex items-center gap-2"><Icon name="book" size={20}/> Área de Estudo</h2>
                     </div>
-                    <div className="content p-4 space-y-4">
-                        <SystemStatus user={user} />
-                        <MiniWeek events={events} onGoToAgenda={() => setTab('agenda')} />
-                        <div className="bg-gradient-to-br from-indigo-900 to-slate-900 border border-indigo-500/30 rounded-2xl p-5 text-white shadow-xl relative overflow-hidden">
-                            <div className="absolute -right-4 -top-4 opacity-10"><Icon name={wStatus.i} size={100} className={wStatus.c}/></div>
-                            <div className="relative z-10">
-                                <h3 className="font-bold text-sm text-indigo-300 flex items-center gap-2 uppercase tracking-wider mb-1"><Icon name={wStatus.i} size={14} className={wStatus.c}/> {wStatus.t}</h3>
-                                <div className="flex items-end gap-2"><span className="text-4xl font-bold">{weather ? Math.round(weather.temp) + "°" : "--"}</span><span className="text-sm opacity-70 mb-1">Campo Largo</span></div>
-                                {weather && <div className="text-xs opacity-70 mt-2">💧 {weather.humid}% | 💨 {weather.wind} km/h</div>}
+                    
+                    <div className="content p-4 space-y-6"> 
+                        <div className="space-y-3">
+                            <h3 className="text-xs font-bold text-slate-400 uppercase flex items-center gap-2"><Icon name="calendar" size={14}/> Cronograma de Aulas</h3>
+                            <div className="grid grid-cols-1 gap-3">
+                                {days.map(day => (
+                                    <div key={day} className="bg-slate-800/50 border border-slate-700/50 rounded-xl p-3">
+                                        <div className="flex justify-between items-center mb-2 border-b border-slate-700/50 pb-1">
+                                            <span className="text-sm font-bold text-cyan-200">{day}</span>
+                                            <button onClick={()=>addClass(day)} className="text-cyan-500 bg-cyan-900/20 p-1 rounded hover:bg-cyan-900/40"><Icon name="plus" size={14}/></button>
+                                        </div>
+                                        <div className="space-y-1">
+                                            {(classes[day] && classes[day].length > 0) ? classes[day].map((cls, idx) => (
+                                                <div key={idx} className="flex justify-between items-start text-xs text-slate-300 bg-slate-900/50 p-2 rounded">
+                                                    <span>{cls}</span>
+                                                    <button onClick={()=>removeClass(day, idx)} className="text-red-400 opacity-50 hover:opacity-100"><Icon name="trash" size={12}/></button>
+                                                </div>
+                                            )) : <span className="text-[10px] text-slate-600 italic">Sem aulas cadastradas</span>}
+                                        </div>
+                                    </div>
+                                ))}
                             </div>
                         </div>
-                        <div className="space-y-2"><h3 className="text-xs font-bold text-slate-500 uppercase ml-1">Links Rápidos</h3><QuickLinks /></div>
-                        <div className="grid grid-cols-1 gap-3"><Scratchpad /></div>
+
+                        <div className="bg-slate-800 border border-slate-700 rounded-xl p-4">
+                             <div className="flex justify-between items-center mb-3">
+                                <h3 className="text-xs font-bold text-slate-400 uppercase">Atendimentos / Monitoria</h3>
+                                <button onClick={()=>modal({ open:true, title:"Novo Atendimento", ph:"Prof. Silva - Sala 3", isEvent:true, ok: (val) => setAppointments([...appointments, {id:Date.now(), t:val}]) })} className="text-[10px] bg-slate-700 px-2 py-1 rounded text-white">Adicionar</button>
+                             </div>
+                             <div className="space-y-2">
+                                {appointments.length === 0 && <p className="text-xs text-slate-600">Nenhum atendimento agendado.</p>}
+                                {appointments.map(apt => (
+                                    <div key={apt.id} className="flex justify-between items-center bg-slate-900 p-2 rounded border-l-2 border-purple-500">
+                                        <span className="text-xs text-slate-200">{apt.t}</span>
+                                        <button onClick={()=>setAppointments(appointments.filter(a=>a.id!==apt.id))} className="text-slate-600 hover:text-red-400"><Icon name="trash" size={14}/></button>
+                                    </div>
+                                ))}
+                             </div>
+                        </div>
+
+                        <div className="space-y-3">
+                             <h3 className="text-xs font-bold text-slate-400 uppercase">Caderno & Foco</h3>
+                             <div className="bg-slate-800 border border-slate-700 rounded-xl overflow-hidden flex flex-col h-64 mb-4">
+                                <div className="bg-slate-900 p-2 flex gap-2 overflow-x-auto no-scrollbar border-b border-slate-700">
+                                    {notebooks.map(n => (<button key={n.id} onClick={()=>setSelNote(n.id)} className={`px-3 py-1 rounded text-[10px] font-bold whitespace-nowrap ${selNote===n.id ? 'bg-cyan-900/40 text-cyan-400' : 'bg-slate-800 text-slate-500'}`}>{n.t}</button>))}
+                                    <button onClick={addPage} className="px-2 py-1 rounded bg-slate-700 text-slate-300 text-[10px]">+</button>
+                                </div>
+                                <div className="flex-1 relative">
+                                    <input value={activeNote.t} onChange={e=>setNotebooks(notebooks.map(n=>n.id===selNote?{...n,t:e.target.value}:n))} className="w-full bg-transparent p-2 text-xs font-bold text-cyan-200 outline-none border-b border-slate-700/50 placeholder:text-slate-600" placeholder="Título da Página" />
+                                    <textarea className="w-full h-[calc(100%-32px)] bg-slate-900/30 p-3 text-xs text-slate-300 outline-none resize-none leading-relaxed" value={activeNote.c} onChange={e=>updateNote(e.target.value)} placeholder="Anotações de aula..."/>
+                                </div>
+                            </div>
+                            
+                            <div className="grid grid-cols-2 gap-3">
+                                <button onClick={openCalc} className="bg-slate-800 border border-slate-700 p-4 rounded-xl flex flex-col items-center justify-center gap-2 active:scale-95 transition-transform hover:bg-slate-750">
+                                    <Icon name="calc" size={24} className="text-cyan-400"/>
+                                    <span className="text-xs font-bold">Calc. Científica</span>
+                                </button>
+                                <div className="bg-slate-800 border border-slate-700 p-4 rounded-xl flex flex-col items-center justify-center relative overflow-hidden">
+                                     <span className="text-[10px] text-slate-500 uppercase font-bold mb-1">Pomodoro</span>
+                                     <div className="text-xl font-mono font-bold text-white mb-1">{Math.floor(pomoTime/60)}:{(pomoTime%60).toString().padStart(2,'0')}</div>
+                                     <button onClick={()=>setPomoActive(!pomoActive)} className={`text-[10px] px-3 py-1 rounded font-bold ${pomoActive?'bg-red-900/50 text-red-400':'bg-cyan-900/50 text-cyan-400'}`}>{pomoActive?'PAUSAR':'INICIAR'}</button>
+                                </div>
+                            </div>
+                        </div>
                     </div>
                 </div>
             );
         };
 
-        // Outros componentes simplificados para economizar espaço
-        const ShoppingList = () => <div className="p-4 text-center text-slate-500 mt-20">Aba de Compras em desenvolvimento...</div>;
-        const Habits = () => <div className="p-4 text-center text-slate-500 mt-20">Aba de Hábitos em desenvolvimento...</div>;
-        const Kanban = () => <div className="p-4 text-center text-slate-500 mt-20">Aba de Projetos em desenvolvimento...</div>;
-        const StudyTab = () => <div className="p-4 text-center text-slate-500 mt-20">Aba de Estudos em desenvolvimento...</div>;
-        const DietTab = () => <div className="p-4 text-center text-slate-500 mt-20">Aba de Dieta em desenvolvimento...</div>;
-        const WorkoutTab = () => <div className="p-4 text-center text-slate-500 mt-20">Aba de Treinos em desenvolvimento...</div>;
-        const NewsFeed = () => <div className="p-4 text-center text-slate-500 mt-20">Feed de Notícias desativado na versão local.</div>;
-        const Agenda = () => <div className="p-4 text-center text-slate-500 mt-20">Agenda em desenvolvimento...</div>;
-        const Notes = () => <div className="p-4 text-center text-slate-500 mt-20">Cofre de Notas em desenvolvimento...</div>;
+        const DietTab = ({ modal }) => {
+            const [view, setView] = useState('today'); 
+            const [plans, setPlans] = useStorage('diet_plans_v1', []); 
+            const [meals, setMeals] = useStorage('diet_log_v60', []); 
+            
+            const todayK = new Date().toLocaleDateString();
+            const todayMeals = meals.filter(m => m.date === todayK);
+            
+            const totals = todayMeals.reduce((acc, m) => ({
+                cal: acc.cal + (m.cal||0), p: acc.p + (m.p||0), c: acc.c + (m.c||0), f: acc.f + (m.f||0)
+            }), {cal:0, p:0, c:0, f:0});
+
+            const GOAL_CAL = 2000;
+            const progress = Math.min(100, (totals.cal / GOAL_CAL) * 100);
+
+            const addPlan = () => modal({ open: true, title: "Criar Modelo", isDietPlan: true, ph: "Nome (Ex: Café da Manhã Padrão)", ok: (val) => setPlans([...plans, val]) });
+            const logPlan = (p) => setMeals([{ ...p, date: todayK, id: Date.now() }, ...meals]);
+            const logCustom = () => modal({ open: true, title: "Refeição Avulsa", isDietPlan: true, ph: "Nome (Ex: Snack Extra)", ok: (val) => setMeals([{ ...val, date: todayK }, ...meals]) });
+
+            return (
+                <div className="h-full flex flex-col fade-in">
+                    <div className="glass p-4 sticky top-0 z-10 border-b border-slate-800 flex justify-between items-center">
+                        <div className="flex gap-4">
+                            <button onClick={()=>setView('today')} className={`text-lg font-bold transition-colors ${view==='today'?'text-green-400':'text-slate-500'}`}>Hoje</button>
+                            <button onClick={()=>setView('plan')} className={`text-lg font-bold transition-colors ${view==='plan'?'text-green-400':'text-slate-500'}`}>Modelos</button>
+                        </div>
+                        {view==='today' ? (
+                            <button onClick={logCustom} className="bg-green-600 text-white px-3 py-1 rounded-lg text-xs font-bold shadow-lg flex items-center gap-1"><Icon name="plus" size={14}/> ADD</button>
+                        ) : (
+                            <button onClick={addPlan} className="bg-green-600 text-white px-3 py-1 rounded-lg text-xs font-bold shadow-lg flex items-center gap-1"><Icon name="plus" size={14}/> NOVO</button>
+                        )}
+                    </div>
+                    
+                    <div className="content p-4 space-y-5">
+                        {view === 'today' ? (
+                            <>
+                                <div className="bg-slate-800 border border-slate-700 rounded-xl p-5 shadow-lg relative overflow-hidden">
+                                    <div className="flex justify-between items-end mb-2 relative z-10">
+                                        <div><span className="text-xs font-bold text-slate-400 uppercase">Calorias Hoje</span><div className="text-3xl font-bold text-white leading-none mt-1">{totals.cal} <span className="text-sm text-slate-500 font-normal">/ {GOAL_CAL}</span></div></div>
+                                        <Icon name="fire" size={32} className={`${progress >= 100 ? 'text-red-500 animate-pulse' : 'text-slate-700'}`}/>
+                                    </div>
+                                    <div className="h-3 w-full bg-slate-900 rounded-full overflow-hidden relative z-10"><div className="h-full bg-gradient-to-r from-green-500 to-emerald-400 transition-all duration-500" style={{width: `${progress}%`}}></div></div>
+                                    <div className="grid grid-cols-3 gap-2 mt-4 pt-4 border-t border-slate-700/50 relative z-10">
+                                        <div className="text-center"><div className="text-[10px] text-blue-400 font-bold uppercase mb-1">Prot</div><div className="text-sm font-bold text-white bg-slate-900/50 rounded py-1">{totals.p}g</div></div>
+                                        <div className="text-center"><div className="text-[10px] text-yellow-400 font-bold uppercase mb-1">Carb</div><div className="text-sm font-bold text-white bg-slate-900/50 rounded py-1">{totals.c}g</div></div>
+                                        <div className="text-center"><div className="text-[10px] text-red-400 font-bold uppercase mb-1">Gord</div><div className="text-sm font-bold text-white bg-slate-900/50 rounded py-1">{totals.f}g</div></div>
+                                    </div>
+                                </div>
+                                <div className="space-y-3">
+                                    {todayMeals.length === 0 && <div className="text-center mt-10"><p className="text-slate-600 text-sm">Nada registrado hoje.</p><button onClick={()=>setView('plan')} className="text-green-400 text-xs font-bold mt-2 underline">Usar Modelo</button></div>}
+                                    {todayMeals.map(m => (
+                                        <div key={m.id} className="bg-slate-800 border border-slate-700 p-3 rounded-xl flex justify-between items-center group">
+                                            <div className="flex items-center gap-3">
+                                                <div className="bg-slate-900 w-10 h-10 rounded-full flex items-center justify-center text-xs font-bold text-green-400 border border-slate-700">{m.cal}</div>
+                                                <div><h4 className="font-bold text-slate-200 text-sm">{m.name}</h4><div className="text-[10px] text-slate-400 flex gap-2"><span>P: {m.p}g</span><span>C: {m.c}g</span><span>G: {m.f}g</span></div></div>
+                                            </div>
+                                            <button onClick={()=>setMeals(meals.filter(x=>x.id!==m.id))} className="text-slate-600 hover:text-red-500 p-2 opacity-50 group-hover:opacity-100 transition-opacity"><Icon name="trash" size={16}/></button>
+                                        </div>
+                                    ))}
+                                </div>
+                            </>
+                        ) : (
+                            <div className="space-y-3">
+                                <p className="text-xs text-slate-500 mb-2 uppercase font-bold text-center">Toque no + para adicionar ao dia</p>
+                                {plans.map(p => (
+                                    <div key={p.id} className="w-full bg-slate-800 border border-slate-700 p-4 rounded-xl flex justify-between items-center hover:bg-slate-750 transition-all text-left">
+                                        <div><h4 className="font-bold text-slate-200 text-sm">{p.name}</h4><div className="text-[10px] text-slate-400 mt-1">{p.cal} kcal • P:{p.p} C:{p.c} F:{p.f}</div></div>
+                                        <div className="flex gap-2">
+                                            <button onClick={()=>setPlans(plans.filter(x=>x.id!==p.id))} className="text-slate-600 hover:text-red-400 p-2"><Icon name="trash" size={16}/></button>
+                                            <button onClick={()=>logPlan(p)} className="bg-green-900/20 text-green-400 p-2 rounded-lg hover:bg-green-900/40"><Icon name="plus" size={16}/></button>
+                                        </div>
+                                    </div>
+                                ))}
+                                {plans.length === 0 && <p className="text-center text-slate-600 text-sm mt-10">Crie modelos de refeição (ex: almoço, janta) para agilizar seu dia a dia.</p>}
+                            </div>
+                        )}
+                    </div>
+                </div>
+            );
+        };
+
+        const WorkoutTab = ({ modal, addToast }) => {
+            const [view, setView] = useState('plans'); 
+            const [plans, setPlans] = useStorage('workout_plans_v2', []); 
+            const [history, setHistory] = useStorage('workout_history_v3', []); 
+            
+            const [activePlan, setActivePlan] = useState(null);
+            const [sessionTime, setSessionTime] = useState(0);
+            const [sessionTimerActive, setSessionTimerActive] = useState(false);
+            const [sessionData, setSessionData] = useState({});
+
+            useEffect(() => {
+                let interval = null;
+                if (sessionTimerActive) {
+                    interval = setInterval(() => setSessionTime(t => t + 1), 1000);
+                }
+                return () => clearInterval(interval);
+            }, [sessionTimerActive]);
+
+            const [expandedPlan, setExpandedPlan] = useState(null);
+            const createPlan = () => modal({ open: true, title: "Criar Treino", isWorkoutPlan: true, ph: "Nome (Ex: Treino A - Costas)", ok: (val) => setPlans([...plans, val]) });
+            const addExToPlan = (planId) => {
+                modal({ open: true, title: "Adicionar Exercício", isExercise: true, ph: "Nome do Exercício", ok: (val) => {
+                    setPlans(plans.map(p => p.id === planId ? { ...p, exercises: [...p.exercises, val] } : p));
+                }});
+            };
+            const deletePlan = (e, id) => { e.stopPropagation(); if(confirm("Excluir este treino?")) setPlans(plans.filter(p => p.id !== id)); };
+            const deleteEx = (planId, exId) => {
+                setPlans(plans.map(p => p.id === planId ? { ...p, exercises: p.exercises.filter(x => x.id !== exId) } : p));
+            };
+
+            const startSession = (plan) => {
+                setActivePlan(plan);
+                setSessionTime(0);
+                setSessionData({});
+                setSessionTimerActive(true);
+                setView('active');
+            };
+
+            const updateSessionInput = (exId, field, val) => {
+                setSessionData(prev => ({
+                    ...prev,
+                    [exId]: { ...prev[exId], [field]: val }
+                }));
+            };
+
+            const finishSession = () => {
+                if(!confirm("Finalizar treino e salvar?")) return;
+                setSessionTimerActive(false);
+                
+                const details = activePlan.exercises.map(ex => {
+                    const d = sessionData[ex.id] || {};
+                    const w = d.weight || "-";
+                    const r = d.reps || "-";
+                    return `${ex.name}: ${w}kg / ${r} reps`;
+                });
+
+                const entry = {
+                    id: Date.now(),
+                    date: new Date().toLocaleDateString(),
+                    name: activePlan.name,
+                    duration: `${Math.floor(sessionTime/60)}m ${sessionTime%60}s`,
+                    exercises: details
+                };
+
+                setHistory([entry, ...history]);
+                setActivePlan(null);
+                setView('history');
+                addToast("Treino Salvo!");
+            };
+
+            const formatTime = (s) => {
+                const m = Math.floor(s / 60).toString().padStart(2, '0');
+                const sec = (s % 60).toString().padStart(2, '0');
+                return `${m}:${sec}`;
+            };
+
+            if (view === 'active' && activePlan) {
+                return (
+                    <div className="h-full flex flex-col fade-in bg-slate-950">
+                        <div className="p-4 bg-slate-900 border-b border-slate-800 flex justify-between items-center sticky top-0 z-20">
+                            <div>
+                                <h3 className="text-white font-bold text-lg">{activePlan.name}</h3>
+                                <div className="text-red-400 font-mono text-xl font-bold flex items-center gap-2">
+                                    <Icon name="clock" size={18}/> {formatTime(sessionTime)}
+                                </div>
+                            </div>
+                            <button onClick={()=>setSessionTimerActive(!sessionTimerActive)} className={`p-3 rounded-full ${sessionTimerActive ? 'bg-yellow-600' : 'bg-green-600'}`}>
+                                <Icon name={sessionTimerActive ? "lock" : "run"} size={20} className="text-white"/>
+                            </button>
+                        </div>
+                        <div className="content p-4 space-y-4">
+                            {activePlan.exercises.map(ex => (
+                                <div key={ex.id} className="bg-slate-800 p-4 rounded-xl border border-slate-700">
+                                    <div className="flex justify-between mb-2">
+                                        <span className="font-bold text-slate-200">{ex.name}</span>
+                                        <span className="text-xs text-slate-500">Meta: {ex.sets}</span>
+                                    </div>
+                                    <div className="flex gap-3">
+                                        <div className="flex-1">
+                                            <label className="text-[9px] text-slate-400 uppercase font-bold">Peso (kg)</label>
+                                            <input type="number" placeholder="-" className="w-full bg-slate-900 border border-slate-600 rounded p-2 text-white outline-none focus:border-red-500" 
+                                                onChange={e=>updateSessionInput(ex.id, 'weight', e.target.value)} />
+                                        </div>
+                                        <div className="flex-1">
+                                            <label className="text-[9px] text-slate-400 uppercase font-bold">Reps Feitas</label>
+                                            <input type="number" placeholder="-" className="w-full bg-slate-900 border border-slate-600 rounded p-2 text-white outline-none focus:border-red-500" 
+                                                onChange={e=>updateSessionInput(ex.id, 'reps', e.target.value)} />
+                                        </div>
+                                    </div>
+                                </div>
+                            ))}
+                            <button onClick={finishSession} className="w-full bg-red-600 hover:bg-red-500 text-white py-4 rounded-xl font-bold text-lg shadow-lg flex items-center justify-center gap-2">
+                                <Icon name="save"/> FINALIZAR TREINO
+                            </button>
+                            <button onClick={()=>{if(confirm("Cancelar treino? Nada será salvo.")) setView('plans');}} className="w-full text-slate-500 text-xs font-bold py-2">CANCELAR</button>
+                        </div>
+                    </div>
+                );
+            }
+
+            return (
+                <div className="h-full flex flex-col fade-in">
+                    <div className="glass p-4 sticky top-0 z-10 border-b border-slate-800 flex justify-between items-center">
+                        <div className="flex gap-4">
+                            <button onClick={()=>setView('plans')} className={`text-lg font-bold transition-colors ${view==='plans'?'text-red-500':'text-slate-500'}`}>Meus Treinos</button>
+                            <button onClick={()=>setView('history')} className={`text-lg font-bold transition-colors ${view==='history'?'text-red-500':'text-slate-500'}`}>Histórico</button>
+                        </div>
+                        {view === 'plans' && <button onClick={createPlan} className="bg-red-600 text-white px-3 py-1 rounded-lg text-xs font-bold shadow-lg flex items-center gap-1"><Icon name="plus" size={14}/> CRIAR</button>}
+                    </div>
+                    
+                    <div className="content p-4 space-y-4">
+                        {view === 'plans' ? (
+                            <>
+                                {plans.length === 0 && <div className="text-center mt-20 opacity-50"><Icon name="dumbbell" size={48} className="mx-auto mb-2 text-slate-600"/><p className="text-slate-500 text-sm">Nenhum treino criado.</p></div>}
+                                {plans.map(p => (
+                                    <div key={p.id} className="bg-slate-800 border border-slate-700 rounded-xl overflow-hidden transition-all duration-300">
+                                        <div onClick={()=>setExpandedPlan(expandedPlan === p.id ? null : p.id)} className="p-4 flex justify-between items-center cursor-pointer bg-slate-800 hover:bg-slate-750">
+                                            <div className="flex items-center gap-3">
+                                                <div className={`p-2 rounded-lg ${expandedPlan===p.id ? 'bg-red-600 text-white' : 'bg-slate-900 text-slate-500'}`}><Icon name="list" size={18}/></div>
+                                                <div><h3 className="font-bold text-slate-200">{p.name}</h3><p className="text-[10px] text-slate-500">{p.exercises.length} exercícios</p></div>
+                                            </div>
+                                            <div className="flex items-center gap-2">
+                                                <button onClick={(e)=>deletePlan(e, p.id)} className="text-slate-600 hover:text-red-500 p-2"><Icon name="trash" size={16}/></button>
+                                                <Icon name="back" size={16} className={`text-slate-500 transition-transform ${expandedPlan===p.id ? '-rotate-90' : 'rotate-180'}`}/>
+                                            </div>
+                                        </div>
+                                        
+                                        {expandedPlan === p.id && (
+                                            <div className="bg-slate-900/50 p-3 border-t border-slate-700 space-y-2">
+                                                {p.exercises.map(ex => (
+                                                    <div key={ex.id} className="flex justify-between items-center text-sm bg-slate-900 p-2 rounded border border-slate-700/50">
+                                                        <span className="text-slate-300 flex-1">{ex.name}</span>
+                                                        <span className="text-red-400 font-bold text-xs mr-3">{ex.sets}</span>
+                                                        <button onClick={()=>deleteEx(p.id, ex.id)} className="text-slate-600 hover:text-red-400"><Icon name="trash" size={12}/></button>
+                                                    </div>
+                                                ))}
+                                                <div className="flex gap-2 mt-3 pt-2 border-t border-slate-700/30">
+                                                    <button onClick={()=>addExToPlan(p.id)} className="flex-1 py-2 rounded-lg bg-slate-800 text-slate-400 text-xs font-bold hover:text-white transition-colors">+ Exercício</button>
+                                                    <button onClick={()=>startSession(p)} className="flex-1 py-2 rounded-lg bg-red-600 text-white text-xs font-bold shadow-lg hover:bg-red-500 transition-colors flex items-center justify-center gap-1"><Icon name="run" size={14}/> INICIAR TREINO</button>
+                                                </div>
+                                            </div>
+                                        )}
+                                    </div>
+                                ))}
+                            </>
+                        ) : (
+                            <>
+                                {history.length === 0 && <p className="text-center text-slate-600 text-sm mt-20">Histórico vazio.</p>}
+                                {history.map(h => (
+                                    <div key={h.id} className="bg-slate-800 border border-slate-700 p-4 rounded-xl shadow-md">
+                                        <div className="flex justify-between items-start mb-2">
+                                            <div>
+                                                <h3 className="font-bold text-slate-200 text-sm">{h.name}</h3>
+                                                <span className="text-[9px] bg-slate-900 border border-slate-700 px-1.5 py-0.5 rounded text-slate-400">{h.date} • {h.duration}</span>
+                                            </div>
+                                            <button onClick={()=>setHistory(history.filter(x => x.id !== h.id))} className="text-slate-600 hover:text-red-500 p-1"><Icon name="trash" size={16}/></button>
+                                        </div>
+                                        <div className="space-y-1">
+                                            {h.exercises.map((line, idx) => (
+                                                <p key={idx} className="text-[10px] text-slate-400 border-l-2 border-red-900/30 pl-2">{line}</p>
+                                            ))}
+                                        </div>
+                                    </div>
+                                ))}
+                            </>
+                        )}
+                    </div>
+                </div>
+            );
+        };
 
         const Utilities = ({ openCalc }) => {
+            const [torchOn, setTorchOn] = useState(false);
+            const toggleTorch = async () => {
+                try {
+                    const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } });
+                    const track = stream.getVideoTracks()[0];
+                    if(!torchOn) { await track.applyConstraints({ advanced: [{ torch: true }] }); setTorchOn(true); window.torchTrack = track; }
+                    else { if(window.torchTrack) { window.torchTrack.applyConstraints({ advanced: [{ torch: false }] }); window.torchTrack.stop(); } setTorchOn(false); }
+                } catch(e) { alert("A lanterna não está disponível neste dispositivo/navegador."); setTorchOn(false); }
+            };
+
             const [chkText, setChkText] = useState("");
             const [correctedText, setCorrectedText] = useState("");
             
-            // CORRETOR V3 - Reescrevemos a função para evitar o bug do espaço e do "é" duplicado com segurança total
+            // CORRETOR SEGURO SEM DUPLICAR "É"
             const checkSpelling = () => {
                 if(!chkText) return;
-                let res = chkText;
-                res = res.replace(/\s+/g, ' '); // remove espaços múltiplos
+                let res = chkText.replace(/\s+/g, ' '); 
                 
                 const dictionary = { "nao": "não", "naum": "não", "n": "não", "eh": "é", "vc": "você", "vcs": "vocês", "pq": "porque", "tbm": "também", "tb": "também", "hj": "hoje", "concerteza": "com certeza", "derrepente": "de repente", "menas": "menos", "seje": "seja", "mecher": "mexer", "nada haver": "nada a ver", "exessão": "exceção", "excessão": "exceção", "entao": "então", "sao": "são", "irmao": "irmão", "coracao": "coração", "atencao": "atenção", "situacao": "situação", "voce": "você", "ate": "até", "sera": "será", "ja": "já", "so": "só", "ola": "olá", "facil": "fácil", "dificil": "difícil", "rapido": "rápido", "msg": "mensagem", "abs": "abraços", "sdd": "saudade", "tlg": "tá ligado", "vlw": "valeu", "p/": "para" };
                 
-                // Mapeia as palavras garantindo que as acentuações não interfiram no regex global
                 let words = res.split(' ');
                 words = words.map(w => {
                     let clean = w.replace(/[.,!?;:]/g, '').toLowerCase();
@@ -403,20 +977,36 @@
                 });
                 res = words.join(' ');
                 
-                res = res.replace(/\s+([.,!?;:])/g, '$1'); // ajusta espaços antes da pontuação
-                res = res.replace(/([.,!?;:])(?=[^\s])/g, '$1 '); // garante espaço após a pontuação
-                res = res.charAt(0).toUpperCase() + res.slice(1); // capitaliza o começo
+                res = res.replace(/\s+([.,!?;:])/g, '$1'); 
+                res = res.replace(/([.,!?;:])(?=[^\s])/g, '$1 '); 
+                res = res.charAt(0).toUpperCase() + res.slice(1);
                 
                 setCorrectedText(res.trim());
             };
+
+            const [swTime, setSwTime] = useState(0);
+            const [swActive, setSwActive] = useState(false);
+            useEffect(() => { let interval = null; if (swActive) interval = setInterval(() => setSwTime(t => t + 10), 10); else clearInterval(interval); return () => clearInterval(interval); }, [swActive]);
+
+            const [genPass, setGenPass] = useState("");
+            const generatePass = () => { const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$%^&*"; let p = ""; for(let i=0; i<16; i++) p += chars.charAt(Math.floor(Math.random() * chars.length)); setGenPass(p); };
 
             return (
                 <div className="h-full flex flex-col fade-in">
                     <div className="glass p-4 sticky top-0 z-10 border-b border-slate-800 flex justify-between items-center"><h2 className="text-xl font-bold text-white flex items-center gap-2"><Icon name="grid" size={20}/> Utilidades</h2></div>
                     <div className="content p-4 space-y-4">
-                        <button onClick={openCalc} className="w-full bg-slate-800 border border-slate-700 p-4 rounded-xl flex items-center justify-center gap-2 active:scale-95 transition-transform"><Icon name="calc" size={28} className="text-blue-400"/><span className="text-sm font-bold">Calculadora</span></button>
+                        <div className="bg-slate-800 border border-slate-700 p-3 rounded-xl flex flex-col items-center justify-center relative overflow-hidden">
+                            <span className="text-[10px] text-slate-400 font-bold uppercase mb-1">Cronômetro</span>
+                            <div className="text-4xl font-mono font-bold text-white mb-2 tracking-widest">{("0" + Math.floor((swTime / 60000) % 60)).slice(-2)}:{("0" + Math.floor((swTime / 1000) % 60)).slice(-2)}<span className="text-lg text-slate-500">.{("0" + ((swTime / 10) % 100)).slice(-2)}</span></div>
+                            <div className="flex gap-2 w-full px-4"><button onClick={()=>setSwActive(!swActive)} className={`flex-1 py-2 rounded font-bold text-xs ${swActive?'bg-yellow-600 text-white':'bg-emerald-600 text-white'}`}>{swActive?'Pausar':'Iniciar'}</button><button onClick={()=>{setSwActive(false);setSwTime(0)}} className="px-4 py-2 rounded font-bold text-xs bg-slate-700 text-slate-300">Zerar</button></div>
+                        </div>
+                        <div className="grid grid-cols-2 gap-3">
+                            <button onClick={openCalc} className="bg-slate-800 border border-slate-700 p-4 rounded-xl flex flex-col items-center justify-center gap-2 active:scale-95 transition-transform hover:bg-slate-750"><Icon name="calc" size={28} className="text-blue-400"/><span className="text-xs font-bold">Calculadora</span></button>
+                            <div className="bg-slate-800 border border-slate-700 p-3 rounded-xl flex flex-col items-center justify-center text-center"><span className="text-[10px] text-slate-400 font-bold uppercase mb-1">Gerar Senha</span><div onClick={()=>{navigator.clipboard.writeText(genPass)}} className="text-xs font-mono bg-slate-900 p-1 rounded w-full mb-1 truncate select-all cursor-pointer text-blue-300 h-6">{genPass || "Clique Gerar"}</div><button onClick={generatePass} className="px-3 py-1 rounded text-[10px] font-bold bg-blue-600 text-white">Gerar Nova</button></div>
+                        </div>
+                        <button onClick={toggleTorch} className={`w-full p-4 rounded-xl border flex items-center justify-center gap-2 font-bold transition-all shadow-lg ${torchOn ? 'bg-yellow-500 border-yellow-400 text-black animate-pulse' : 'bg-slate-800 border-slate-700 text-slate-300'}`}><Icon name="flash" size={24}/>{torchOn ? "LANTERNA LIGADA" : "Ligar Lanterna"}</button>
                         <div className="bg-slate-800 border border-slate-700 p-4 rounded-xl">
-                            <h4 className="text-[10px] text-slate-400 font-bold uppercase mb-3 flex items-center gap-1"><Icon name="checktext" size={14} className="text-emerald-400"/> Corretor + Pontuação KMZ (Bug Resolvido)</h4>
+                            <h4 className="text-[10px] text-slate-400 font-bold uppercase mb-3 flex items-center gap-1"><Icon name="checktext" size={14} className="text-emerald-400"/> Corretor + Pontuação V2</h4>
                             <textarea value={chkText} onChange={e=>setChkText(e.target.value)} placeholder="Cole seu texto aqui..." className="w-full bg-slate-900 p-3 rounded text-sm mb-2 text-white outline-none h-24 resize-none border border-slate-700 focus:border-emerald-500 transition-colors"/>
                             <button onClick={checkSpelling} className="w-full bg-emerald-700 hover:bg-emerald-600 text-white py-2 rounded text-xs font-bold mb-3 shadow-lg">Corrigir e Formatar</button>
                             {correctedText && (<div className="bg-slate-900/80 p-3 rounded border border-emerald-900/50"><p className="text-[10px] text-slate-500 uppercase mb-1 font-bold">Resultado:</p><p className="text-sm text-emerald-100 font-medium break-words select-all" onClick={()=>{navigator.clipboard.writeText(correctedText)}}>{correctedText}</p></div>)}
@@ -426,19 +1016,22 @@
             );
         };
 
-        // --- SISTEMA DE LOGIN LOCAL (SEM FIREBASE) E CRÉDITOS ---
+        // --- SISTEMA DE PERFIL SEM FIREBASE E CRÉDITOS ---
         const ProfileTab = ({ user, setUser, theme, setTheme }) => {
             const [usernameInput, setUsernameInput] = useState('');
             
-            const handleLogin = (e) => {
+            const loginLocal = (e) => {
                 e.preventDefault();
                 if(!usernameInput.trim()) return;
                 setUser({ uid: Date.now().toString(), displayName: usernameInput, email: usernameInput.toLowerCase().replace(/\s/g, '') + '@kmz.local' });
             };
+            
+            const logout = () => { setUser(null); };
 
             const themes = [
                 { id: 'cyber', name: 'Cyber (Padrão)', color: 'bg-blue-600' },
                 { id: 'forest', name: 'Floresta', color: 'bg-emerald-600' },
+                { id: 'sunset', name: 'Sunset', color: 'bg-orange-600' },
                 { id: 'dracula', name: 'Drácula', color: 'bg-purple-600' }
             ];
 
@@ -452,31 +1045,40 @@
                                     <div className="w-24 h-24 rounded-full bg-blue-600 flex items-center justify-center text-4xl font-bold mb-4 shadow-lg text-white border-4 border-slate-700">{user.displayName.charAt(0).toUpperCase()}</div>
                                     <h3 className="text-xl font-bold text-white">{user.displayName}</h3>
                                     <p className="text-slate-400 text-sm mb-6">{user.email}</p>
-                                    <button onClick={() => setUser(null)} className="w-full bg-red-900/30 text-red-400 py-3 rounded-xl font-bold hover:bg-red-900/50 transition-colors">SAIR DA CONTA</button>
+                                    <div className="w-full space-y-3">
+                                        <button onClick={logout} className="w-full bg-red-900/30 text-red-400 py-3 rounded-xl font-bold hover:bg-red-900/50 transition-colors">SAIR DA CONTA</button>
+                                        <div className="text-xs text-center text-slate-600 mt-4">ID Local: {user.uid}</div>
+                                    </div>
                                 </>
                             ) : (
-                                <form onSubmit={handleLogin} className="w-full flex flex-col items-center">
-                                    <div className="w-20 h-20 rounded-full bg-slate-900 flex items-center justify-center mb-4 border border-slate-700"><Icon name="lock" size={32} className="text-slate-600"/></div>
+                                <form onSubmit={loginLocal} className="w-full flex flex-col items-center">
+                                    <div className="w-24 h-24 rounded-full bg-slate-900 flex items-center justify-center mb-4 border border-slate-700"><Icon name="lock" size={48} className="text-slate-600"/></div>
                                     <h3 className="text-lg font-bold text-slate-300 mb-2">Acesso Local</h3>
-                                    <p className="text-slate-500 text-xs text-center mb-4">Seus dados agora são salvos localmente e sem dependências externas.</p>
-                                    <input value={usernameInput} onChange={e=>setUsernameInput(e.target.value)} placeholder="Seu Nome" className="w-full bg-slate-900 border border-slate-700 p-3 rounded-xl text-white mb-3 outline-none text-center" />
-                                    <button type="submit" className="w-full bg-blue-600 text-white py-3 rounded-xl font-bold shadow-lg flex items-center justify-center gap-2 hover:bg-blue-500 transition-colors">Entrar</button>
+                                    <p className="text-slate-500 text-xs text-center mb-6 px-4">Conecte-se localmente. Seus dados são salvos no armazenamento deste dispositivo.</p>
+                                    <input value={usernameInput} onChange={e=>setUsernameInput(e.target.value)} placeholder="Digite seu Nome" className="w-full bg-slate-900 border border-slate-700 p-3 rounded-xl text-white mb-3 outline-none text-center" />
+                                    <button type="submit" className="w-full bg-blue-600 text-white py-3 rounded-xl font-bold shadow-lg flex items-center justify-center gap-2 hover:bg-blue-500 transition-colors">
+                                        <Icon name="user" size={18}/> Acessar
+                                    </button>
                                 </form>
                             )}
                         </div>
 
                         <div className="w-full max-w-sm">
-                            <h4 className="text-slate-400 font-bold text-xs uppercase mb-3 flex items-center gap-2"><Icon name="palette" size={14}/> Tema do App</h4>
-                            <div className="grid grid-cols-3 gap-2">
+                            <h4 className="text-slate-400 font-bold text-xs uppercase mb-3 flex items-center gap-2"><Icon name="palette" size={14}/> Temas & Aparência</h4>
+                            <div className="grid grid-cols-2 gap-3">
                                 {themes.map(t => (
-                                    <button key={t.id} onClick={() => setTheme(t.id)} className={`p-2 rounded-xl border flex flex-col items-center gap-2 transition-all ${theme === t.id ? 'bg-slate-700 border-white text-white' : 'bg-slate-800 border-slate-700 text-slate-400'}`}>
-                                        <div className={`w-4 h-4 rounded-full ${t.color}`}></div><span className="text-[10px] font-bold text-center">{t.name}</span>
+                                    <button 
+                                        key={t.id} 
+                                        onClick={() => setTheme(t.id)}
+                                        className={`p-3 rounded-xl border flex items-center gap-3 transition-all ${theme === t.id ? 'bg-slate-700 border-white text-white' : 'bg-slate-800 border-slate-700 text-slate-400 hover:bg-slate-750'}`}
+                                    >
+                                        <div className={`w-4 h-4 rounded-full ${t.color}`}></div>
+                                        <span className="text-xs font-bold">{t.name}</span>
                                     </button>
                                 ))}
                             </div>
                         </div>
 
-                        {/* Atualização de Créditos e KMZ Enterprise */}
                         <div className="mt-8 text-center bg-slate-900/50 p-4 rounded-xl border border-slate-800 w-full max-w-sm">
                              <h4 className="text-slate-500 font-bold text-xs uppercase mb-2">Informações</h4>
                              <p className="text-slate-300 text-sm font-bold">Empresa: KMZ</p>
@@ -488,11 +1090,174 @@
             );
         };
 
+        const Dashboard = ({ openCalc, events, setTab, requestNotify, notifyPerm, user }) => {
+            const [weather, setWeather] = useState(null);
+            const [loadingWeather, setLoadingWeather] = useState(false);
+            const [finances, setFinances] = useState(null);
+            const getTodayCount = () => { const k = new Date().toISOString().split('T')[0]; return events[k] ? events[k].length : 0; };
+            const todayCount = getTodayCount();
+            const tips = useMemo(() => ["Descanse seus olhos.", "Beba água!", "Documente seu código.", "Use 'const' sempre que puder.", "Faça commits frequentes.", "Revise antes de enviar.", "Aprenda atalhos.", "Limpe sua mesa."], []);
+            const tip = useMemo(() => tips[Math.floor(Math.random() * tips.length)], []);
+
+            const getClima = async (forceLoc = false) => {
+               setLoadingWeather(true);
+               // CAMPO LARGO COORDS
+               const fallbackLat = -25.4597; 
+               const fallbackLon = -49.5286;
+               
+               const fetchW = async (la, lo, lb) => {
+                   try {
+                       const res = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${la}&longitude=${lo}&current=temperature_2m,relative_humidity_2m,weather_code,wind_speed_10m,apparent_temperature&daily=temperature_2m_max,temperature_2m_min&timezone=auto`);
+                       const data = await res.json();
+                       let label = lb;
+                       if (!label && la && lo) {
+                           try {
+                               const geo = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${la}&lon=${lo}`);
+                               const geoData = await geo.json();
+                               label = geoData.address.city || geoData.address.town || "Local Atual";
+                           } catch { label = "Campo Largo (GPS)"; }
+                       }
+                       setWeather({ temp: data.current.temperature_2m, code: data.current.weather_code, humid: data.current.relative_humidity_2m, wind: data.current.wind_speed_10m, feels: data.current.apparent_temperature, min: data.daily.temperature_2m_min[0], max: data.daily.temperature_2m_max[0], label: label });
+                   } catch { setWeather({temp: "--", label: "Erro na API"}); } finally { setLoadingWeather(false); }
+               };
+               if (forceLoc && "geolocation" in navigator) {
+                   navigator.geolocation.getCurrentPosition(
+                       (pos) => fetchW(pos.coords.latitude, pos.coords.longitude),
+                       (err) => { fetchW(fallbackLat, fallbackLon, "Campo Largo (Padrão)"); },
+                       { timeout: 10000, enableHighAccuracy: true }
+                   );
+               } else { fetchW(fallbackLat, fallbackLon, "Campo Largo (Padrão)"); }
+            };
+
+            useEffect(() => { 
+                getClima(true);
+                fetch('https://economia.awesomeapi.com.br/last/USD-BRL,EUR-BRL,BTC-BRL').then(res => res.json()).then(data => setFinances(data)).catch(err => console.error(err));
+            }, []);
+
+            const getWeatherStatus = (code) => {
+                if(code === 0) return { t: "Céu Limpo", i: "sun", c: "text-yellow-400" };
+                if(code >= 1 && code <= 3) return { t: "Nublado", i: "cloud", c: "text-slate-300" };
+                if(code >= 51 && code <= 67) return { t: "Chuva", i: "rain", c: "text-blue-400" };
+                if(code >= 71) return { t: "Neve", i: "cloud", c: "text-white" };
+                if(code >= 95) return { t: "Tempestade", i: "rain", c: "text-purple-400" };
+                return { t: "...", i: "sun", c: "text-slate-400" };
+            };
+            const wStatus = weather && weather.code !== undefined ? getWeatherStatus(weather.code) : {t:"...", i:"sun"};
+
+            return (
+                <div className="h-full flex flex-col fade-in">
+                    <div className="glass p-5 sticky top-0 z-10 border-b border-slate-800 flex justify-between items-center">
+                        <div>
+                            <h1 className="text-xl font-bold text-white bg-clip-text text-transparent bg-gradient-to-r from-blue-400 to-purple-400">KMZ App</h1>
+                            <p className="text-[10px] text-blue-300 font-bold uppercase tracking-wider">Enterprise Edition</p>
+                        </div>
+                        <div className="flex gap-3 items-center">
+                            <button onClick={()=>setTab('profile')} className="relative">
+                                {user ? <div className="w-8 h-8 rounded-full bg-blue-600 flex items-center justify-center text-white font-bold">{user.displayName.charAt(0).toUpperCase()}</div> : <Icon name="user" className="text-slate-400"/>}
+                            </button>
+                            <div className="relative"><button onClick={requestNotify} className="p-2 relative active:scale-95 transition-transform"><Icon name="bell" className={notifyPerm === 'granted' ? "text-emerald-400" : (notifyPerm === 'denied' ? "text-red-400" : "text-slate-400")} />{todayCount > 0 && <span className="absolute top-0 right-0 bg-red-500 text-white text-[8px] font-bold w-4 h-4 flex items-center justify-center rounded-full animate-bounce">{todayCount}</span>}</button></div>
+                        </div>
+                    </div>
+                    <div className="content p-4 space-y-4">
+                        <SystemStatus user={user} />
+                        <MiniWeek events={events} onGoToAgenda={() => setTab('agenda')} />
+                        {todayCount > 0 && (<div className="bg-purple-900/30 border border-purple-500/50 p-3 rounded-xl flex items-center gap-3 animate-pulse"><Icon name="calendar" className="text-purple-400"/><div><h4 className="text-xs font-bold text-purple-200">Agenda Hoje</h4><p className="text-sm text-white">Você tem <b>{todayCount}</b> compromissos hoje.</p></div></div>)}
+                        <div className="grid grid-cols-3 gap-2"><FinanceCard label="Dólar" value={finances?.USDBRL?.bid} trend={finances?.USDBRL?.pctChange} /><FinanceCard label="Euro" value={finances?.EURBRL?.bid} trend={finances?.EURBRL?.pctChange} /><FinanceCard label="Bitcoin" value={finances?.BTCBRL?.bid} isBtc /></div>
+                        <div className="bg-gradient-to-br from-indigo-900 to-slate-900 border border-indigo-500/30 rounded-2xl p-5 text-white shadow-xl relative overflow-hidden">
+                            <div className="absolute -right-4 -top-4 opacity-10"><Icon name={wStatus.i} size={100} className={wStatus.c}/></div>
+                            <div className="relative z-10 flex justify-between items-end">
+                                <div>
+                                    <h3 className="font-bold text-sm text-indigo-300 flex items-center gap-2 uppercase tracking-wider mb-1"><Icon name={wStatus.i} size={14} className={wStatus.c}/> {wStatus.t}</h3>
+                                    <div className="flex items-end gap-2"><span className="text-4xl font-bold">{weather ? Math.round(weather.temp) + "°" : "--"}</span><span className="text-sm opacity-70 mb-1">{weather ? weather.label : "..."}</span></div>
+                                    {weather && (<div className="flex gap-3 mt-2 text-xs opacity-70"><span>Sensação: <b>{Math.round(weather.feels)}°</b> | Mín: {Math.round(weather.min)}° Máx: {Math.round(weather.max)}°</span><span>💧 {weather.humid}% | 💨 {weather.wind} km/h</span></div>)}
+                                </div>
+                                <button onClick={() => getClima(true)} className={`text-indigo-300 bg-indigo-950/50 p-2 rounded-lg hover:bg-indigo-900 ${loadingWeather ? 'animate-spin' : ''}`}><Icon name="refresh" size={20}/></button>
+                            </div>
+                        </div>
+                        <div className="bg-slate-800 border border-slate-700 p-4 rounded-xl flex items-start gap-3"><div className="bg-yellow-900/20 p-2 rounded-full text-yellow-400"><Icon name="bulb" size={20}/></div><div><h4 className="text-xs font-bold text-yellow-400 uppercase mb-1">Dica do Dia</h4><p className="text-sm text-slate-300 italic">"{tip}"</p></div></div>
+                        <div className="space-y-2"><h3 className="text-xs font-bold text-slate-500 uppercase ml-1">Links Rápidos</h3><QuickLinks /></div>
+                        <div className="grid grid-cols-1 gap-3"><Scratchpad /></div>
+                    </div>
+                </div>
+            );
+        };
+
+        const NewsFeed = () => {
+            const [news, setNews] = useState([]);
+            const [loading, setLoading] = useState(false);
+            const [lastUpdate, setLastUpdate] = useStorage('news_last_update', 0);
+            const [cachedNews, setCachedNews] = useStorage('news_cache_data', []);
+            const extractImage = (item) => {
+                if (item.thumbnail) return item.thumbnail;
+                if (item.enclosure && item.enclosure.link && item.enclosure.type && item.enclosure.type.startsWith('image')) return item.enclosure.link;
+                const imgRegex = /<img.*?src=["'](.*?)["']/; const match = imgRegex.exec(item.content || item.description); return (match && match[1]) ? match[1] : null;
+            };
+            const fetchFeed = async () => {
+                setLoading(true);
+                try {
+                    const res = await fetch(`https://api.rss2json.com/v1/api.json?rss_url=https://www.cnnbrasil.com.br/feed/&t=${Date.now()}`);
+                    const data = await res.json();
+                    if(data.status === 'ok') { setNews(data.items); setCachedNews(data.items); setLastUpdate(Date.now()); }
+                } catch(e) { console.error(e); }
+                setLoading(false);
+            };
+            useEffect(() => {
+                const now = new Date(); const last = new Date(lastUpdate); const isDifferentDay = now.getDate() !== last.getDate() || now.getMonth() !== last.getMonth();
+                if (isDifferentDay || cachedNews.length === 0) fetchFeed(); else setNews(cachedNews);
+            }, []);
+            return (
+                <div className="h-full flex flex-col fade-in">
+                    <div className="glass p-4 sticky top-0 z-10 flex justify-between items-center border-b border-slate-800"><h2 className="text-xl font-bold text-emerald-400 flex items-center gap-2"><Icon name="news" size={20}/> CNN Feed</h2><button onClick={fetchFeed} className={`text-slate-400 p-2 rounded-full hover:bg-slate-800 flex gap-2 items-center text-xs font-bold ${loading ? 'animate-pulse text-emerald-400' : ''}`}><Icon name="refresh" size={16}/> {loading ? "..." : "ATUALIZAR"}</button></div>
+                    <div className="content p-4 space-y-4">
+                        {loading && <div className="text-center text-emerald-400 text-sm mt-10 animate-pulse">Buscando as últimas manchetes...</div>}
+                        {!loading && news.length === 0 && <div className="text-center mt-20 text-slate-500">Sem notícias. Tente atualizar.</div>}
+                        {news.map((item, idx) => {
+                            const imgUrl = extractImage(item);
+                            return (
+                                <div key={idx} className="bg-slate-800 border border-slate-700 rounded-xl shadow-sm flex flex-col overflow-hidden">
+                                    {imgUrl ? <img src={imgUrl} alt="News" className="w-full h-36 object-cover" onError={(e) => e.target.style.display='none'}/> : <div className="w-full h-24 bg-slate-900 flex items-center justify-center text-slate-700"><Icon name="news" size={40}/></div>}
+                                    <div className="p-4 flex flex-col gap-2"><h3 className="font-bold text-slate-100 text-sm leading-snug line-clamp-2">{item.title}</h3><div className="flex justify-between items-center border-t border-slate-700/50 pt-2 mt-1"><span className="text-[10px] text-slate-500 uppercase">{new Date(item.pubDate).toLocaleDateString()}</span><a href={item.link} target="_blank" className="text-emerald-400 text-xs font-bold flex items-center gap-1 hover:underline bg-emerald-900/20 px-2 py-1 rounded">Ler Notícia <Icon name="external" size={10}/></a></div></div>
+                                </div>
+                            );
+                        })}
+                    </div>
+                </div>
+            );
+        };
+
+        const Notes = ({ modal, addToast }) => {
+            const [pass, setPass] = useStorage('vault_pass', null);
+            const [lock, setLock] = useState(true);
+            const [inp, setInp] = useState("");
+            const [notes, setNotes] = useStorage('notes_v24', []);
+            const [act, setAct] = useState(null);
+            const active = notes.find(n=>n.id===act);
+            const print = () => { if(!active) return; document.getElementById('print-area').innerHTML = `<div style="padding: 40px; font-family: sans-serif;"><h1 style="border-bottom: 2px solid #000; padding-bottom: 10px; margin-bottom: 20px;">${active.t}</h1><pre style="white-space: pre-wrap; font-family: sans-serif; line-height: 1.6;">${active.c}</pre><div style="margin-top: 50px; font-size: 12px; color: #666; border-top: 1px solid #ccc; padding-top: 10px;">Dev.Pro Suite • ${active.d}</div></div>`; setTimeout(()=>window.print(), 100); };
+            const share = () => { if(!active) return; const txt = `*${active.t}*\n\n${active.c}`; window.open(`https://api.whatsapp.com/send?text=${encodeURIComponent(txt)}`, '_blank'); };
+            const deleteNote = () => { if(confirm("Tem certeza que deseja apagar esta nota?")) { setNotes(notes.filter(n => n.id !== act)); setAct(null); addToast("Nota Excluída"); } };
+
+            if(!pass) return ( <div className="h-full flex items-center justify-center p-6 fade-in"><div className="bg-slate-800 p-8 rounded-2xl border border-slate-700 w-full max-w-sm text-center shadow-2xl"><Icon name="lock" size={48} className="mx-auto text-blue-400 mb-4"/><h2 className="text-white font-bold text-xl mb-2">Definir Senha</h2><p className="text-slate-400 text-sm mb-6">Proteja suas notas privadas (Apenas LocalStorage).</p><input className="w-full bg-slate-900 border border-slate-600 rounded-lg p-3 text-center text-white mb-4 outline-none text-lg" type="password" value={inp} onChange={e=>setInp(e.target.value)} placeholder="Nova Senha" autoFocus /><button onClick={()=>{ if(inp.length>3) setPass(inp); else alert("Mínimo 4 caracteres"); }} className="bg-blue-600 hover:bg-blue-500 w-full py-3 rounded-lg font-bold text-white shadow-lg transition-colors">CRIAR COFRE</button></div></div> );
+            if(lock) return ( <div className="h-full flex items-center justify-center p-6 fade-in"><div className="bg-slate-800 p-8 rounded-2xl border border-slate-700 w-full max-w-sm text-center shadow-2xl"><div className="flex justify-center mb-6 text-slate-500 bg-slate-900 w-20 h-20 rounded-full items-center mx-auto border border-slate-700"><Icon name="lock" size={32}/></div><h2 className="text-white font-bold text-xl mb-6">Cofre Bloqueado</h2><form onSubmit={e=>{e.preventDefault(); if(inp===pass){setLock(false);setInp("")}else alert("Senha incorreta");}}><input className="w-full bg-slate-900 border border-slate-600 rounded-lg p-4 text-center text-white mb-6 outline-none text-xl tracking-widest" type="password" value={inp} onChange={e=>setInp(e.target.value)} placeholder="Senha" autoFocus /><button className="bg-blue-600 hover:bg-blue-500 w-full py-3 rounded-lg font-bold text-white shadow-lg transition-colors">DESBLOQUEAR</button></form></div></div> );
+            if(active) return ( <div className="absolute inset-0 bg-slate-950 z-50 flex flex-col fade-in"><div className="glass p-3 flex items-center gap-2 border-b border-slate-800"><button onClick={()=>setAct(null)} className="bg-slate-800 hover:bg-slate-700 text-slate-300 p-2 sm:px-3 sm:py-2 rounded-lg text-xs font-bold flex items-center gap-1 transition-colors shrink-0"><Icon name="back" size={16}/> <span className="hidden sm:inline">VOLTAR</span></button><input className="flex-1 bg-transparent font-bold text-white outline-none px-2 text-lg min-w-0" value={active.t} onChange={e=>setNotes(notes.map(n=>n.id===act?{...n,t:e.target.value}:n))} placeholder="Título..."/><button onClick={deleteNote} className="bg-red-900/30 text-red-400 p-2 rounded-lg shrink-0"><Icon name="trash" size={18}/></button></div><div className="bg-slate-900 border-b border-slate-800 p-2 flex gap-3 overflow-x-auto no-scrollbar"><button onClick={share} className="flex items-center gap-1 bg-green-900/20 text-green-400 hover:bg-green-900/30 px-3 py-1.5 rounded-lg text-xs font-bold transition-colors whitespace-nowrap"><Icon name="whatsapp" size={16}/> WhatsApp</button><button onClick={print} className="flex items-center gap-1 bg-slate-800 text-slate-300 hover:bg-slate-700 px-3 py-1.5 rounded-lg text-xs font-bold transition-colors whitespace-nowrap"><Icon name="pdf" size={16}/> Exportar PDF</button></div><textarea className="flex-1 bg-slate-950 p-5 text-slate-300 outline-none resize-none text-lg leading-relaxed placeholder:text-slate-700 w-full h-full overflow-y-auto pb-20" value={active.c} onChange={e=>setNotes(notes.map(n=>n.id===act?{...n,c:e.target.value}:n))} placeholder="Digite sua nota aqui..."/></div> );
+
+            return (
+                <div className="h-full flex flex-col fade-in">
+                    <div className="glass p-4 sticky top-0 z-10 space-y-3 border-b border-slate-800"><div className="flex justify-between items-center"><span className="font-bold text-xl text-white flex items-center gap-2"><Icon name="lock" size={20}/> Cofre</span><button onClick={()=>{const id=Date.now(); setNotes([{id,t:'',c:'',d:new Date().toLocaleDateString()},...notes]); setAct(id);}} className="bg-blue-600 hover:bg-blue-500 text-white px-4 py-2 rounded-lg text-xs font-bold flex gap-1 items-center uppercase shadow-lg transition-colors"><Icon name="plus" size={16}/> Nova</button></div></div>
+                    <div className="content p-4 grid grid-cols-2 gap-3">
+                        {notes.map(n=>(<div key={n.id} onClick={()=>setAct(n.id)} className="bg-slate-800 p-4 rounded-xl border border-slate-700 h-40 overflow-hidden hover:border-blue-500/50 transition-colors cursor-pointer flex flex-col shadow-sm group"><h4 className="font-bold mb-2 text-slate-200 text-sm line-clamp-2">{n.t || "Sem Título"}</h4><p className="text-xs text-slate-500 line-clamp-3 flex-1">{n.c || "Conteúdo vazio..."}</p><span className="text-[10px] text-slate-600 mt-2 block text-right group-hover:text-slate-400">{n.d}</span></div>))}
+                        {notes.length === 0 && <p className="col-span-2 text-center text-slate-600 mt-10">Cofre vazio.</p>}
+                    </div>
+                    <div className="fixed bottom-28 right-4 z-30"><button onClick={()=>setLock(true)} className="bg-slate-800 border border-slate-600 text-slate-300 p-3 rounded-full shadow-xl flex items-center gap-2 font-bold text-xs pr-4 hover:bg-slate-700 transition-colors"><span className="bg-slate-700 p-1 rounded-full"><Icon name="lock" size={14}/></span> BLOQUEAR</button></div>
+                </div>
+            );
+        };
+
+        // --- ROOT ---
         const App = () => {
             const [tab, setTab] = useState('home');
             const [mod, setMod] = useState({open:false});
             const [agendaEvts, setAgendaEvts] = useStorage('agenda_v24', {});
-            const [theme, setTheme] = useStorage('app_theme_v70', 'cyber'); 
+            const [theme, setTheme] = useStorage('app_theme_v70', 'cyber');
             const [notifyPerm, requestNotify] = useNotifications(agendaEvts);
             
             // Estado de Usuário Local Substituto do Firebase
@@ -501,10 +1266,9 @@
             // Controle da Splash Screen do Cordova e da Animação KMZ
             useEffect(() => {
                 document.addEventListener('deviceready', () => {
-                    if(navigator.splashscreen) navigator.splashscreen.hide(); // Remove splash padrão do Cordova
+                    if(navigator.splashscreen) navigator.splashscreen.hide();
                 }, false);
 
-                // Remove a splash HTML/CSS da KMZ após 2.5 segundos
                 setTimeout(() => {
                     const splash = document.getElementById('kmz-splash');
                     if(splash) {
@@ -514,33 +1278,50 @@
                 }, 2500);
             }, []);
 
+            const [toasts, setToasts] = useState([]);
+            const addToast = (title, msg) => {
+                const id = Date.now();
+                setToasts(prev => [...prev, { id, title, msg }]);
+                setTimeout(() => setToasts(prev => prev.filter(t => t.id !== id)), 3000);
+            };
+
             return (
                 <div className="h-full w-full flex flex-col font-sans text-slate-100 bg-slate-950">
-                    <style>{themeStyles[theme]}</style> 
+                    <style>{themeStyles[theme]}</style>
                     <Modal cfg={mod} close={()=>setMod({...mod, open:false})} />
+                    <ToastContainer toasts={toasts} />
                     
                     <main className="flex-1 overflow-hidden relative w-full h-full">
                         {tab==='home' && <Dashboard openCalc={()=>setMod({open:true, isCalc:true})} events={agendaEvts} setTab={setTab} requestNotify={requestNotify} notifyPerm={notifyPerm} user={user} />}
                         {tab==='news' && <NewsFeed />}
                         {tab==='utils' && <Utilities openCalc={()=>setMod({open:true, isCalc:true})} />}
-                        {tab==='shop' && <ShoppingList />}
-                        {tab==='habits' && <Habits />}
-                        {tab==='agenda' && <Agenda />}
-                        {tab==='kanban' && <Kanban />}
-                        {tab==='notes' && <Notes />}
-                        {tab==='study' && <StudyTab />}
-                        {tab==='workout' && <WorkoutTab />}
-                        {tab==='diet' && <DietTab />}
+                        {tab==='shop' && <ShoppingList addToast={addToast} />}
+                        {tab==='habits' && <Habits modal={setMod} />}
+                        {tab==='agenda' && <Agenda evts={agendaEvts} setEvts={setAgendaEvts} modal={setMod} addToast={addToast} />}
+                        {tab==='kanban' && <Kanban modal={setMod} />}
+                        {tab==='notes' && <Notes modal={setMod} addToast={addToast} />}
+                        {tab==='study' && <StudyTab modal={setMod} openCalc={()=>setMod({open:true, isCalc:true})} />}
+                        {tab==='workout' && <WorkoutTab modal={setMod} addToast={addToast} />}
+                        {tab==='diet' && <DietTab modal={setMod} />}
                         {tab==='profile' && <ProfileTab user={user} setUser={setUser} theme={theme} setTheme={setTheme} />}
                     </main>
 
                     <nav className="fixed bottom-0 w-full bg-slate-900/95 border-t border-slate-800 pb-8 pt-3 px-2 z-40 h-[90px] backdrop-blur-md overflow-x-auto no-scrollbar flex items-center gap-2">
                         {[
                             {id:'home', l:'Início', i:'home'},
+                            {id:'study', l:'Estudo', i:'book'},
+                            {id:'workout', l:'Treino', i:'dumbbell'},
+                            {id:'diet', l:'Dieta', i:'apple'}, 
+                            {id:'news', l:'Feed', i:'news'},
+                            {id:'shop', l:'Compras', i:'cart'},
                             {id:'utils', l:'Util', i:'grid'},
+                            {id:'notes', l:'Cofre', i:'lock'},
+                            {id:'kanban', l:'Projetos', i:'kanban'},
+                            {id:'agenda', l:'Agenda', i:'calendar'},
+                            {id:'habits', l:'Hábitos', i:'list'},
                             {id:'profile', l:'Perfil', i:'user'}
                         ].map(b => (
-                            <button key={b.id} onClick={()=>setTab(b.id)} className={`flex flex-col items-center justify-center gap-1 min-w-[64px] h-full transition-all active:scale-95 flex-1 ${tab===b.id?'text-blue-400':'text-slate-500 hover:text-slate-300'}`}>
+                            <button key={b.id} onClick={()=>setTab(b.id)} className={`flex flex-col items-center justify-center gap-1 min-w-[64px] h-full transition-all active:scale-95 ${tab===b.id?'text-blue-400':'text-slate-500 hover:text-slate-300'}`}>
                                 <Icon name={b.i} size={22} className={tab===b.id ? "drop-shadow-[0_0_8px_rgba(96,165,250,0.5)]" : ""} />
                                 <span className="text-[9px] font-bold uppercase tracking-wide">{b.l}</span>
                             </button>
