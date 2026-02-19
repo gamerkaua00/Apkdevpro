@@ -11,21 +11,21 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout Code
-        uses: actions/checkout@v4 # Atualizado para v4
+        uses: actions/checkout@v4
 
       - name: Setup Node.js
-        uses: actions/setup-node@v4 # Atualizado para v4
+        uses: actions/setup-node@v4
         with:
           node-version: '18'
 
       - name: Setup Java
-        uses: actions/setup-java@v4 # Atualizado para v4
+        uses: actions/setup-java@v4
         with:
           distribution: 'temurin'
           java-version: '17'
 
       - name: Setup Android SDK
-        uses: android-actions/setup-android@v2
+        uses: android-actions/setup-android@v3
 
       - name: Install Cordova
         run: npm install -g cordova
@@ -38,10 +38,13 @@ jobs:
           cp config.xml app/ || true
           cd app
           cordova platform add android
-          cordova build android --release
+          
+          # Removido o --release para gerar um APK de debug (fácil de instalar e testar)
+          cordova build android
 
       - name: Upload APK
-        uses: actions/upload-artifact@v4 # AQUI ESTÁ A CORREÇÃO: v3 para v4
+        uses: actions/upload-artifact@v4
         with:
           name: kmz-app-apk
-          path: app/platforms/android/app/build/outputs/apk/release/app-release-unsigned.apk
+          # Usando um asterisco duplo (curinga) para capturar o APK independente da pasta exata que o Cordova escolher
+          path: app/platforms/android/app/build/outputs/apk/**/*.apk
