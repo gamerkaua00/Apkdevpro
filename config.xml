@@ -1,0 +1,17 @@
+<?xml version='1.0' encoding='utf-8'?>
+<widget id="com.kmz.enterprise" version="1.0.0" xmlns="http://www.w3.org/ns/widgets" xmlns:cdv="http://cordova.apache.org/ns/1.0">
+    <name>KMZ App</name>
+    <description>KMZ Enterprise App</description>
+    <author email="kmzsuportt1@gmail.com">Kauã Mazur dos Reis</author>
+    <content src="index.html" />
+    <access origin="*" />
+    <allow-intent href="http://*/*" />
+    <allow-intent href="https://*/*" />
+    <preference name="SplashScreenDelay" value="0" />
+    <preference name="FadeSplashScreen" value="false"/>
+    <preference name="ShowSplashScreenSpinner" value="false"/>
+    <icon src="icon.png" />
+    <platform name="android">
+        <preference name="AndroidWindowSplashScreenAnimatedIcon" value="icon.png" />
+    </platform>
+</widget>
